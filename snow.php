@@ -2,9 +2,6 @@
 class SnowCompiler {
 	protected $ebnf = '
 {
-	"T_KEYWORD": {"|": ["<T_WHILE_K>", "<T_IF_K>", "<T_FOR_K>", "<T_FN_K>", "<T_DO_K>", "<T_ECHO_K>", "<T_BOOL_AND>", "<T_BOOL_OR>", "<T_BOOLEAN_LITERAL>", "<T_NULL>", "<T_THEN_K>", "<T_ELSE_K>"]},
-	"T_FOR_K": "for\\\\s+",
-	"T_ECHO_K": "echo\\\\s+",
 	"T_NULL": "null\\\\b",
 	"T_INDENT": "\\\\s{4}|\\\\t",
 	"T_INCDEC": ["<T_IDENTIFIER>", "\\\\s*(\\\\+\\\\+)|(--)"],
@@ -90,7 +87,7 @@ class SnowCompiler {
 	"T_IDENTIFIER": "$${R\\\\1/\\\\./->}\\\\2",
 	"T_CONST_DEF": "define(\\"\\\\1\\", \\\\3);",
 	"T_CONST": "\\\\2",
-	"T_FOR_LOOP": "foreach (\\\\5 as ${\\\\3.2?\\\\3.2 => /}\\\\2) {\\\\6;\\n}",
+	"T_FOR_LOOP": "foreach (\\\\5 as ${\\\\3.2?\\\\3.2 => /}\\\\2) {\\\\6;\\n}\\nunset(\\\\2${\\\\3.2?, \\\\3.2/});\\n",
 	"T_NUMBER_LITERAL": "\\\\1",
 	"T_BOOLEAN_LITERAL": "\\\\1",
 	"T_REGEXP_LITERAL": "\'\\\\1\'",
@@ -456,5 +453,4 @@ while a < b
 EOC
 );
 var_dump($snow->compile());
-
 ?>

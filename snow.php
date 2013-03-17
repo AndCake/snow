@@ -1,6 +1,6 @@
 #!/usr/bin/env php -q
 <?php
-	include("snow.php");
+	include("snowcompiler.php");
 	$outputFile = null;
 	$code = <<<EOC
 !VARI = _POST['var']
@@ -63,6 +63,6 @@ EOC;
 	if (!empty($outputFile)) {
 		file_put_contents($outputFile, $result);
 	} else {
-		echo $snow->compile();
+		echo $result;
 	}
 ?>

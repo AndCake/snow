@@ -31,7 +31,10 @@ class SnowCompiler {
 	"T_ELIF": ["<T_NEWLINE>", "elif\\\\s+", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
 	"T_IF_THEN": ["if\\\\s+", "<T_PCONDITION>", "\\\\s+then\\\\s+", "<T_SIMPLE_EXPRESSION>", {"?": ["\\\\s+else\\\\s+", "<T_SIMPLE_EXPRESSION>"]}],
 	"T_PCONDITION": {"|": [["\\\\s*\\\\(\\\\s*", "<T_CONDITION>", "\\\\s*\\\\)\\\\s*"], "<T_CONDITION>"]},
-	"T_CONDITION": [{"|": ["<T_PCOMPARISON>", [{"?": ["<T_BOOL_NEGATION>"]}, "<T_SIMPLE_EXPRESSION>"]]}, {"*": ["<T_BOOL_OP>", "<T_PCOMPARISON>"]}],
+	"T_CONDITION": ["<T_CONDITION_PART>", {"*": ["<T_BOOL_OP>", "<T_CONDITION_PART>"]}],
+	"T_CONDITION_PART": {"|": ["<T_PCOMPARISON>", [{"?": ["<T_BOOL_NEGATION>"]}, {"|": ["<T_EMPTY>", "<T_EXISTS>", "<T_SIMPLE_EXPRESSION>"]}]]},
+	"T_EMPTY": ["<T_IDENTIFIER>", "\\\\?\\\\?"],
+	"T_EXISTS": ["<T_IDENTIFIER>", "\\\\?"],
 	"T_WHILE": ["while\\\\s+", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
 	"T_PCOMPARISON": {"|": [["\\\\s*\\\\(\\\\s*", "<T_COMPARISON>", "\\\\s*\\\\)\\\\s*"], "<T_COMPARISON>"]},
 	"T_COMPARISON": {"|": ["<T_EQUALS_COMPARISON>", "<T_NEQUALS_COMPARISON>", "<T_GT_COMPARISON>", "<T_LT_COMPARISON>"]},
@@ -80,6 +83,8 @@ class SnowCompiler {
 	"T_INCDEC": "\\\\1\\\\2",
 	"T_COMPLEX_OPERATION": "\\\\1\\\\2",
 	"T_COMPLEX_STRING_OPERATION": "\\\\1 . \\\\2.2",
+	"T_EXISTS": "isset(\\\\1)",
+	"T_EMPTY": "(isset(\\\\1) && !empty(\\\\1))",
 	"T_FN_DEF": "function \\\\2(\\\\3.2) {\\\\4}",
 	"T_EQUALS_COMPARISON": "\\\\1 === \\\\3",
 	"T_NEQUALS_COMPARISON": "\\\\1 !== \\\\3",
@@ -299,7 +304,7 @@ class SnowCompiler {
 				}
 				$this->indentationLevel = $indentDepth;
 			}
-			if ($result !== false) {
+			if ($result != false) {
 				$res = Array();
 				if ($debug) echo str_repeat("\t", $depth)."Success for rule ".$ruleName." at pos ".$pos."\n";
 				$res[$ruleName] = $result;
@@ -382,7 +387,7 @@ class SnowCompiler {
 							}
 							if (gettype($subRule) == "string") {
 								$result = $this->checkRule($subRule, $checkPos, $debug, $depth + 1);
-								$matches = $matches && $result !== false;
+								$matches = $matches && $result != false;
 								if ($matches) {
 									$checkPos += $result["len"];
 									$resultTree[] = $result;
@@ -402,7 +407,7 @@ class SnowCompiler {
 										break;
 									}
 									$result = $this->checkRule($subsubRule, $checkPos, $debug, $depth + 1);
-									$matches = $matches && $result !== false;
+									$matches = $matches && $result != false;
 									if ($matches) {
 										if ($debug) echo str_repeat("\t", $depth)."Success quantifier multi rule: ".json_encode($subsubRule)."\n";
 										$checkPos += $result["len"];
@@ -462,7 +467,7 @@ if not !VARI
 
 for a, b in _POST['var']
 	print("{a} => {b}")
-	c = a & b
+	c = a % b
 
 """Hallo, Welt!
 {b}
@@ -471,18 +476,20 @@ ich bin da"""
 b = 10
 a = 0
 while a < b
-	a++
+	a->strtoupper()->ucfirst()
 
-fn retrieve(a) <- data.getList('test' & a)
+fn retrieve(a) <- data.getList('test' + a)
 
 for i in b downto 20 step 2
 	if i isnt b
 		c = ', ' 
+		i++
 	else 
 		c = ''
-	if i isnt b
+		i--
+	if a?
 		c = ', '
-	echo(c & i)
+	echo(c % i)
 
 a = [
 	"test": 1,

@@ -39,7 +39,7 @@ for i in b downto 20 step 2
 	elif a?
 		c = ', '
 	else
-		c = 'test'
+		break
 	echo(c % i)
 
 # nice comment

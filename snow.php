@@ -22,6 +22,7 @@ while a < b
 	a->substr(2, 3)->strtoupper()->minkel('test')->lcfirst()
 
 fn retrieve(a) <- data.getList('test' + a)
+do retrieve
 
 for i in b downto 20 step 2
 	if i isnt b
@@ -30,12 +31,29 @@ for i in b downto 20 step 2
 	elif i isnt a
 		c = ''
 		i--
+		### 
+			this is my large multiline comment
+			here...
+			and here too
+		###
 	elif a?
 		c = ', '
 	else
 		c = 'test'
 	echo(c % i)
 
+# nice comment
+class X extends Y
+
+	fn __construct
+		Y..a = "test"
+		do Y..a
+		echo(@test.doIt)
+
+	fn doIt(what)
+		<- what
+
+b = new X()
 a = [
 	"test": 1,
 	"ho": 2, 

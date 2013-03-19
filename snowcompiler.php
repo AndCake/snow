@@ -12,37 +12,39 @@ class SnowCompiler {
 	"T_INDENTED_EXPRESSIONS": {"+": ["<T_NEWLINE>", "<T_INDENT>", "<T_EXPRESSION>"]},
 	"T_CLASS_BODY": {"+": ["[ ]*[\\n]+", "<T_INDENT>", {"|":["<T_FN_DEF>", "<T_COMMENT>"]}]},
 	"T_EXPRESSIONS": {"+": ["<T_EXPRESSION>", "<T_NEWLINE>"]},
-	"T_EXPRESSION": {"|": ["<T_FN_DEF>", "<T_IF>", "<T_LOOP>", "<T_CLASS>", "<T_COMMENT>", "<T_LOOP_CONTROL>", "<T_SIMPLE_EXPRESSION>"]},
+	"T_EXPRESSION": {"|": ["<T_FN_DEF>", "<T_IF>", "<T_LOOP>", "<T_CLASS>", "<T_COMMENT>", "<T_LOOP_CONTROL>", "<T_TRY_CATCH>", "<T_SIMPLE_EXPRESSION>"]},
 	"T_LOOP_CONTROL": "continue|break",
+	"T_TRY_CATCH": ["try", "<T_INDENTED_EXPRESSIONS>", "<T_NEWLINE>", "catch[ ]+", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>", {"?": ["<T_NEWLINE>", "finally", "<T_INDENTED_EXPRESSIONS>"]}],
 	"T_FN_DEF": ["fn\\\\s+", {"?": "<T_FNNAME>"}, {"?": ["\\\\s*\\\\(\\\\s*", "<T_PARAMETERS>", "\\\\s*\\\\)"]}, {"|": ["<T_INDENTED_EXPRESSIONS>", "<T_RETURN>"]}], 
-	"T_SIMPLE_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_CONDITION>", "<T_FNCALL>", "<T_RETURN>", "<T_IDENTIFIER>", "<T_LITERAL>", "<T_CONST_DEF>", "<T_CONST>"]},
-	"T_CONDITION_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_CONDITION>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
-	"T_CHAIN_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_CONDITION>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
-	"T_ASSIGNMENT": ["<T_IDENTIFIER>", "\\\\s*=\\\\s*", "<T_SIMPLE_EXPRESSION>"],
+	"T_SIMPLE_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_FNCSCALL>", "<T_RETURN>", "<T_IDENTIFIER>", "<T_LITERAL>", "<T_CONST_DEF>", "<T_CONST>"]},
+	"T_CONDITION_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
+	"T_CHAIN_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
+	"T_ASSIGNMENT": ["<T_IDENTIFIER>", "\\\\s*[\\\\+\\\\-\\\\*/\\\\%]?=\\\\s*", "<T_SIMPLE_EXPRESSION>"],
 	"T_RETURN": ["[ ]*<-\\\\s*", "<T_SIMPLE_EXPRESSION>"],
 	"T_FNCALL": {"|": ["<T_FNDOCALL>", "<T_FNPLAINCALL>", "<T_FN_CHAINCALL>"]},
 	"T_FNDOCALL": ["do\\\\s+", "<T_FNNAME>"],
+	"T_FNCSCALL": ["<T_FNNAME>", "[ ]+", "<T_FN_PARAMETERS>"],
 	"T_FNPLAINCALL": ["(new\\\\s+)?", "<T_FNNAME>", "\\\\s*\\\\(\\\\s*", "<T_FN_PARAMETERS>", "\\\\s*\\\\)"],
 	"T_FN_CHAINCALL": ["<T_CHAIN_EXPRESSION>", {"+": ["->", "<T_FNNAME>", "\\\\s*\\\\(\\\\s*", "<T_FN_PARAMETERS>", "\\\\s*\\\\)"]}],
 	"T_FN_PARAMETERS": {"?": ["<T_SIMPLE_EXPRESSION>", {"*": ["\\\\s*,\\\\s*", "<T_SIMPLE_EXPRESSION>"]}]},
 	"T_CONST_DEF": ["<T_CONST>", "\\\\s*=\\\\s*", "<T_SIMPLE_EXPRESSION>"],
 	"T_CONST": ["!", "<T_UPPERCASE_IDENTIFIER>"],
 	"T_LOOP": {"|": ["<T_FOR_LOOP>", "<T_FOR_COUNT_UP_LOOP>", "<T_FOR_COUNT_DOWN_LOOP>", "<T_WHILE>"]},
-	"T_FOR_COUNT_UP_LOOP": ["for\\\\s+", "<T_IDENTIFIER>", "\\\\s+in\\\\s+", "<T_CONDITION_EXPRESSION>", "\\\\s+to\\\\s+", "<T_CONDITION_EXPRESSION>", {"?": ["\\\\s+step\\\\s+", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
-	"T_FOR_COUNT_DOWN_LOOP": ["for\\\\s+", "<T_IDENTIFIER>", "\\\\s+in\\\\s+", "<T_CONDITION_EXPRESSION>", "\\\\s+downto\\\\s+", "<T_CONDITION_EXPRESSION>", {"?": ["\\\\s+step\\\\s+", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
+	"T_FOR_COUNT_UP_LOOP": ["for\\\\s+", "<T_IDENTIFIER>", "\\\\s+in\\\\s+", "<T_CONDITION_EXPRESSION>", "\\\\s*to\\\\s+", "<T_CONDITION_EXPRESSION>", {"?": ["\\\\s+step\\\\s+", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
+	"T_FOR_COUNT_DOWN_LOOP": ["for\\\\s+", "<T_IDENTIFIER>", "\\\\s+in\\\\s+", "<T_CONDITION_EXPRESSION>", "\\\\s*downto\\\\s+", "<T_CONDITION_EXPRESSION>", {"?": ["\\\\s+step\\\\s+", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
 	"T_FOR_LOOP": ["for\\\\s+", "<T_IDENTIFIER>", {"?": [", ", "<T_IDENTIFIER>"]}, "\\\\s+in\\\\s+", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>"],
-	"T_FNNAME": "_*[A-Za-z][_a-zA-Z0-9.]*",
+	"T_FNNAME": "(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)_*[A-Za-z][_a-zA-Z0-9.]*",
 	"T_IF": ["if\\\\s+", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>", {"*": ["<T_ELIF>"]}, {"?": ["<T_ELSE>"]}],
 	"T_ELSE": ["\\\\s*else[ ]*", "<T_INDENTED_EXPRESSIONS>"],
 	"T_ELIF": ["\\\\s+elif\\\\s+", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
 	"T_IF_THEN": ["if\\\\s+", "<T_PCONDITION>", "\\\\s+then\\\\s+", "<T_SIMPLE_EXPRESSION>", {"?": ["\\\\s+else\\\\s+", "<T_SIMPLE_EXPRESSION>"]}],
-	"T_PCONDITION": {"|": [["\\\\s*\\\\(\\\\s*", "<T_CONDITION>", "\\\\s*\\\\)\\\\s*"], "<T_CONDITION>"]},
+	"T_PCONDITION": {"|": [["\\\\s*\\\\(\\\\s*", "<T_CONDITION>", "\\\\s*\\\\)"], "<T_CONDITION>"]},
 	"T_CONDITION": ["<T_CONDITION_PART>", {"*": ["<T_BOOL_OP>", "<T_CONDITION_PART>"]}],
 	"T_CONDITION_PART": {"|": ["<T_PCOMPARISON>", [{"?": ["<T_BOOL_NEGATION>"]}, {"|": ["<T_EMPTY>", "<T_EXISTS>", "<T_SIMPLE_EXPRESSION>"]}]]},
 	"T_EMPTY": ["<T_IDENTIFIER>", "\\\\?\\\\?"],
 	"T_EXISTS": ["<T_IDENTIFIER>", "\\\\?"],
 	"T_WHILE": ["while\\\\s+", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
-	"T_PCOMPARISON": {"|": [["\\\\s*\\\\(\\\\s*", "<T_COMPARISON>", "\\\\s*\\\\)\\\\s*"], "<T_COMPARISON>"]},
+	"T_PCOMPARISON": {"|": [["\\\\s*\\\\(\\\\s*", "<T_COMPARISON>", "\\\\s*\\\\)"], "<T_COMPARISON>"]},
 	"T_COMPARISON": {"|": ["<T_EQUALS_COMPARISON>", "<T_NEQUALS_COMPARISON>", "<T_GT_COMPARISON>", "<T_LT_COMPARISON>"]},
 	"T_EQUALS_COMPARISON": ["<T_CONDITION_EXPRESSION>", "\\\\s+(is|==)\\\\s+", "<T_CONDITION_EXPRESSION>"],
 	"T_NEQUALS_COMPARISON": ["<T_CONDITION_EXPRESSION>", "\\\\s+(isnt|!=)\\\\s+", "<T_CONDITION_EXPRESSION>"],
@@ -54,7 +56,7 @@ class SnowCompiler {
 	"T_ARRAY_LITERAL": ["\\\\[\\\\s*", {"*": [{"|": ["<T_KEYVALUE_PAIR>", "<T_CONDITION_EXPRESSION>"]}, "\\\\s*[,]?\\\\s*"]}, "\\\\s*\\\\]"],
 	"T_KEYVALUE_PAIR": ["<T_LITERAL>", "\\\\s*:\\\\s*", "<T_CONDITION_EXPRESSION>"],
 	"T_STRING_LITERAL": {"|": ["<T_STRING_LITERAL_UQUOTE>", "<T_STRING_LITERAL_TQUOTE>", "<T_STRING_LITERAL_DQUOTE>"]},
-	"T_IDENTIFIER": ["(@?)_*[a-zA-Z]([_a-zA-Z0-9.]*)", {"*": ["\\\\[", "<T_CONDITION_EXPRESSION>", "\\\\]"]}],
+	"T_IDENTIFIER": ["(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9.]*)", {"*": ["\\\\[", "<T_CONDITION_EXPRESSION>", "\\\\]"]}],
 	"T_UPPERCASE_IDENTIFIER": "_*[A-Z_]+",
 	"T_CLASS_IDENTIFIER": "_*[A-Z][a-zA-Z0-9]*",
 	"T_OPERATION": {"|": ["<T_COMPLEX_OPERATION>", "<T_COMPLEX_STRING_OPERATION>", "<T_INCDEC>"]},
@@ -84,6 +86,7 @@ class SnowCompiler {
 	protected $mapRules = '{
 	"T_IF": "if (\\\\2) {\\\\3;\\n}\\\\4\\\\5\\n",
 	"T_NEWLINE": ";\\n",
+	"T_TRY_CATCH": "try {\\\\2;\\n} catch (Exception \\\\5) {\\\\6;\\n}${\\\\7.3? finally {\\\\7.3;\\n}/}",
 	"T_CLASS": "class \\\\2\\\\3 {\\\\4\\n}",
 	"T_MULTILINE_COMMENT": "/*${R\\\\1/#/}*/",
 	"T_SINGLELINE_COMMENT": "//${R\\\\1/#/}",
@@ -101,7 +104,7 @@ class SnowCompiler {
 	"T_NEQUALS_COMPARISON": "\\\\1 !== \\\\3",
 	"T_GT_COMPARISON": "(gettype($_tmp1 = \\\\1) === gettype($_tmp2 = \\\\3) && ($_tmp1 \\\\2 $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))",
 	"T_LT_COMPARISON": "(gettype($_tmp1 = \\\\1) === gettype($_tmp2 = \\\\3) && ($_tmp1 \\\\2 $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))",
-	"T_IDENTIFIER": "$${R\\\\1/\\\\.\\\\./::$}${R\\\\1/@(.+)/this->\\\\1}${R\\\\1/\\\\./->}\\\\2",
+	"T_IDENTIFIER": "${\\\\1~=(^(true|false|null)$)|\\\\.\\\\.?/$}${R\\\\1/\\\\.\\\\./::$}${R\\\\1/@(.+)/this->\\\\1}${R\\\\1/\\\\./->}\\\\2",
 	"T_CONST_DEF": "define(\\"\\\\1\\", \\\\3)",
 	"T_CONST": "\\\\2",
 	"T_ELSE": " else {\\\\2;\\n}",
@@ -117,8 +120,9 @@ class SnowCompiler {
 	"T_REGEXP_LITERAL": "\'\\\\1\'",
 	"T_WHILE": "while (\\\\2) {\\\\3;}\\n",
 	"T_FNPLAINCALL": "\\\\1${R\\\\2/^(\\\\w+)\\\\.\\\\./\\\\1::}${R\\\\2/^(\\\\w+)\\\\./$\\\\1->}(\\\\4)",
+	"T_FNCSCALL": "${R\\\\1/^(\\\\w+)\\\\.\\\\./\\\\1::}${R\\\\1/^(\\\\w+)\\\\./$\\\\1->}(\\\\3)",
 	"T_FNDOCALL": "${R\\\\2/^(\\\\w+)\\\\.\\\\./\\\\1::}${R\\\\2/^(\\\\w+)\\\\./$\\\\1->}();\\n",
-	"T_ASSIGNMENT": "\\\\1 = \\\\3",
+	"T_ASSIGNMENT": "\\\\1 \\\\2 \\\\3",
 	"T_RETURN": "return \\\\2;\\n",
 	"T_STRING_LITERAL_UQUOTE": "\\\\1",
 	"T_STRING_LITERAL_DQUOTE": "${E\\\\1/\\\\{([^}]+)\\\\}/\" . (\\\\1) . \"}",
@@ -150,7 +154,8 @@ class SnowCompiler {
 		$result = "";
 		if ($tree = $this->checkRuleByName("T_EXPRESSIONS", 0, $debug)) {
 			if ($tree["len"] < strlen($this->code)) {
-				throw new Exception("Error while parsing input.");
+				$line = count(explode("\n", substr($this->code, $tree["len"])));
+				throw new Exception("Error at line ".$line." while parsing input.");
 			}
 			$result = $this->doMapping($tree);
 			unset($tree);
@@ -197,7 +202,7 @@ class SnowCompiler {
 			$tree = $oldValue;
 		}
 
-		preg_match_all('/\\$\\{\\\\([1-9][0-9.]*)\\?([^\\/]*)\\/([^}]*)\\}/m', $template, $ifMatches);
+		preg_match_all('/\\$\\{\\\\([1-9][0-9.]*)(~=[^\\?]+)?\\?([^\\/]*)\\/([^}]*)\\}/m', $template, $ifMatches);
 		preg_match_all('/\\$\\{R\\\\([1-9][0-9]*)\\/([^\\/]*)\\/([^}]*)\\}/m', $template, $replaceMatches);
 		preg_match_all('/\\$\\{E\\\\([1-9][0-9]*)\\/([^\\/]*)\\/([^}]*)\\}/m', $template, $evalMatches);
 		$result = "";
@@ -205,10 +210,15 @@ class SnowCompiler {
 		foreach ($replacements as $repl) {
 			$resultTemplate = $template;
 			foreach ($ifMatches[1] as $key => $match) {
-				if (!empty($repl["\\".$match])) {
-					$resultTemplate = str_replace($ifMatches[0][$key], $ifMatches[2][$key], $resultTemplate);
-				} else {
+				$cond = !empty($repl["\\".$match]);
+				if (!empty($ifMatches[2][$key])) {
+					$ifMatches[2][$key] = str_replace('~=', '', $ifMatches[2][$key]);
+					$cond = preg_match("/".$ifMatches[2][$key]."/", $repl['\\'.$match]);
+				}
+				if ($cond != false) {
 					$resultTemplate = str_replace($ifMatches[0][$key], $ifMatches[3][$key], $resultTemplate);
+				} else {
+					$resultTemplate = str_replace($ifMatches[0][$key], $ifMatches[4][$key], $resultTemplate);
 				}				
 			}
 			$replaced = Array();
@@ -335,7 +345,7 @@ class SnowCompiler {
 			} else {
 				# found base rule
 				if ($debug) echo str_repeat("\t", $depth)."found base rule ".$rule."\n";
-				if ($debug) echo str_repeat("\t", $depth)."/^(".$rule.")/ <==> ".substr($this->code, $pos)."\n";
+				if ($debug) echo str_repeat("\t", $depth)."/^(".$rule.")/ <==> ".substr($this->code, $pos, strpos($this->code, "\n", $pos) - $pos)."\n";
 				if (preg_match("`^(".$rule.")`", substr($this->code, $pos), $matches)) {
 					if ($debug) echo str_repeat("\t", $depth)."Success!\n";
 					return Array("match" => $matches[1], "pos" => $pos, "len" => strlen($matches[1]));

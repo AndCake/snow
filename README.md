@@ -180,6 +180,23 @@ PHP:
 	echo("I am " . "legend!");
 	echo($myString . $value);
 
+Regular Expressions
+-------------------
+Regular expressions can be written similar to the syntax in Javascript / CoffeeScript by simply surrounding it with `/`. It doesn't need to be a string.
+
+Snow:
+
+	/^[a-z]+$/i->preg_match(myvar, match)
+	if match[0]??
+		echo("It has only letters")
+
+PHP:
+
+	preg_match('/^[a-z]+$/i', $myvar, $match);
+	if ((isset($match[0]) && !empty($match[0]))) {
+		echo("It has only letters");
+	}
+
 Arrays
 ------
 Arrays are defined using square brackets "`[]`". They can be defined in two different ways, either as a list of values or a dictionary of key/value pairs.
@@ -265,6 +282,20 @@ PHP:
 	function titlefy($fancystring) {
 		return $fancystring->make_fancy();
 	}
+
+Functions can be called by using normal PHP syntax and also by using standard CoffeeScript syntax: braces can be left away for simple function calls, but should not for nested function calls. If the function should be called without parameters, it's also possible to use the `do` keyword.
+
+Snow:
+
+	print("Test")
+	var_dump fancyObject, someResult
+	message = do findMessage
+
+PHP:
+
+	print("Test");
+	var_dump($fancyObject, $someResult);
+	$message = findMessage();
 
 #### Chaining
 Function calls can be chained using the "`->`" operator which passes the prior expression along as the first argument to the function.

@@ -5,7 +5,7 @@
 	$code = <<<EOC
 !VARI = _POST['var']
 var_dump _POST['var']
-if not !VARI
+if not !VARI or !VARI??
 	<- 'hallo!'
 
 /^[a-z]+$/i->preg_match(myvar, match)
@@ -76,13 +76,27 @@ a = [
 EOC;
 
 	if (count($argv) > 1) {
-		$result = getopt("o:i:");
+		$result = getopt("o:i:h");
 		if (isset($result["o"]) && !empty($result["o"])) {
 			$outputFile = $result["o"];
 		} 
 		if (isset($result["i"]) && !empty($result["i"])) {
 			$code = file_get_contents($result["i"]);
 		}
+		if (isset($result['h'])) {
+			$ver = SnowCompiler::VERSION;
+			$help = <<<ENDL
+Snow Script Compiler Version {$ver}
+
+Syntax:
+	{$argv[0]} [-o <output file>] [-i <input file>]
+	
+	-o <output file> - write the compiled result into the given file. If this parameter is missing, the compiled result will be written to stdout.
+	-i <input file>  - the file that should be compiled. If this parameter is omitted, a test script will be compiled.
+
+ENDL;
+			die($help);
+		}	
 	}
 
 	$snow = new SnowCompiler($code);

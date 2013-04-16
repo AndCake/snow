@@ -99,7 +99,7 @@ PHP:
 
 	$a === $b && $c !== $d;
 
-	if ((gettype($_tmp1 = myFeet()) === gettype($_tmp2 = averageFeet) && ($_tmp1  >  $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))) {
+	if ((gettype($_tmp1 = myFeet()) === gettype($_tmp2 = $averageFeet) && ($_tmp1  >  $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))) {
 		echo("BIGFOOT");
 	}
 
@@ -132,10 +132,10 @@ Code inside "`{}`" concatenates to the string.
 Snow:
 
 	fn travel
-	    echo("
+	    echo "
 	    	The {animal} went to {world.place()}
 	        with his {NUM} friends.
-	    ")
+	    "
 
 	"""<a href="https://snowscript.org">Snowscript</a>\n"""
 
@@ -188,7 +188,7 @@ Snow:
 
 	/^[a-z]+$/i->preg_match(myvar, match)
 	if match[0]??
-		echo("It has only letters")
+		echo "It has only letters"
 
 PHP:
 
@@ -218,7 +218,7 @@ The values are assigned running integers and can be accessed with "`[]`".
 Snow:
 
 	# Fred Hersch
-	echo(pianists[1])
+	echo pianists[1]
 
 PHP:
 
@@ -262,7 +262,7 @@ Accessing dictionaries is done using square brackets "[]".
 
 Snow:
 
-	echo(series['Heroes']['genre'])
+	echo series['Heroes']['genre']
 
 PHP:
 
@@ -275,7 +275,7 @@ The "`fn`" keyword is used to define functions, and "`<-`" to return a value.
 Snow:
 
 	fn titlefy(fancystring)
-    	<- fancystring.make_fancy()
+		<- fancystring.make_fancy()
 
 PHP:
 
@@ -316,11 +316,11 @@ Two control structures are available: "`if`" and the ternary operator.
 Snow:
 
 	if white_walkers.numbers < 500
-    	do fight_valiantly
+		do fight_valiantly
 	elif feeling_lucky
-	    do improvise
+		do improvise
 	else
-    	do run
+		do run
 
 PHP:
 
@@ -337,26 +337,26 @@ Ternary operator is a oneline `if a then b else c` syntax.
 
 Snow:
 
-	a = if height > 199 then "tall" else "small"
+	a = if height is veryHigh then "tall" else "small"
 
 PHP:
 
-	$a = ((gettype($_tmp1 = $height) === gettype($_tmp2 = 199) && ($_tmp1  >  $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null)) ? "tall" : "small");
+	$a = ($height === $veryHigh ? "tall" : "small");
 
 Existence
 ---------
-There are two existence operators "`?`" and "`??`". The first checks with `isset(expr)`, the second with `!empty(expr)`.
+There are two existence operators "`?`" and "`??`". The first checks with `isset(expr)` / `defined(const)`, the second with `!empty(expr)`.
 
 Snow:
 
-	if field['title']?
+	if field['title']? or !RANDOM_STUFF?
 		do_stuff()
 
 	stuff = if try_this()?? then that['girl'] else "Default"
 
 PHP:
 
-	if (isset($field['title'])) {
+	if (isset($field['title']) || defined("RANDOM_STUFF")) {
 		do_stuff();
 	}
 
@@ -369,12 +369,12 @@ Two kind of for loops are supported. Iterating over a collection, and iterating 
 Snow: 
 
 	for data, title in flowers
-    	echo("{data.id}: {title}")
+		echo("{data.id}: {title}")
 	
 	for i in 1 to 10 step 2
-    	echo(i)
+		echo(i)
 	for i in 10 downto 1
-    	echo(i)
+		echo(i)
 
 PHP:
 

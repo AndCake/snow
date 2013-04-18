@@ -5,7 +5,7 @@ class SnowCompiler {
 	protected $ebnf = '
 {
 	"T_NULL": "null\\\\b",
-	"T_INDENT": "([ ]{4}|\\\\t)+",
+	"T_INDENT": "(\\\\s{4}|\\\\t)+",
 	"T_COMMENT": {"|": ["<T_MULTILINE_COMMENT>", "<T_SINGLELINE_COMMENT>"]},
 	"T_CLASS": ["class\\\\s+", "<T_CLASS_IDENTIFIER>", {"*": ["\\\\s+(extends|implements)\\\\s+", "<T_CLASS_IDENTIFIER>", {"*": [",\\\\s*", "<T_CLASS_IDENTIFIER>"]}]}, "<T_CLASS_BODY>"],
 	"T_MULTILINE_COMMENT": "###([^#]|#[^#]|##[^#])+###",
@@ -56,7 +56,7 @@ class SnowCompiler {
 	"T_PARAMETERS": ["<T_PARAMETER>", {"*": ["\\\\s*,\\\\s*", "<T_PARAMETER>"]}],
 	"T_PARAMETER": ["<T_IDENTIFIER>", {"?": ["\\\\s*=\\\\s*", "<T_LITERAL>"]}],
 	"T_LITERAL": {"|": ["<T_REGEXP_LITERAL>", "<T_ARRAY_LITERAL>", "<T_BOOLEAN_LITERAL>", "<T_NULL>", "<T_STRING_LITERAL>", "<T_NUMBER_LITERAL>"]},
-	"T_ARRAY_LITERAL": ["\\\\[\\\\s*", {"*": [{"|": ["<T_KEYVALUE_PAIR>", "<T_CONDITION_EXPRESSION>"]}, "\\\\s*[,]?\\\\s*"]}, "\\\\s*\\\\]"],
+	"T_ARRAY_LITERAL": ["\\\\s*\\\\[\\\\s*", {"*": [{"|": ["<T_KEYVALUE_PAIR>", "<T_CONDITION_EXPRESSION>"]}, "\\\\s*[,]?\\\\s*"]}, "\\\\s*\\\\]"],
 	"T_KEYVALUE_PAIR": ["<T_LITERAL>", "\\\\s*:\\\\s*", "<T_CONDITION_EXPRESSION>"],
 	"T_STRING_LITERAL": {"|": ["<T_STRING_LITERAL_UQUOTE>", "<T_STRING_LITERAL_TQUOTE>", "<T_STRING_LITERAL_DQUOTE>"]},
 	"T_IDENTIFIER": ["(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9.]*)", {"*": ["\\\\[", "<T_CONDITION_EXPRESSION>", "\\\\]"]}],
@@ -80,7 +80,7 @@ class SnowCompiler {
 	"T_FLOAT_NUMBER": "(-?[0-9]*\\\\.[0-9]+)",
 	"T_DEC_NUMBER": "(-?[0-9]+)",
 	"T_REGEXP_LITERAL": "/([^/]+)/[imsxADSUXJu]*",
-	"T_NEWLINE": "[ ]*[\\r\\n]+|\\\\s*$",
+	"T_NEWLINE": "[ \\t]*[\\r\\n]+|\\\\s*$",
 	"T_GTE": "\\\\s*>=\\\\s*",
 	"T_LTE": "\\\\s*<=\\\\s*",
 	"T_GT": "\\\\s*>\\\\s*",

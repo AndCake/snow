@@ -5,7 +5,7 @@ class SnowCompiler {
 	protected $ebnf = '
 {
 	"T_NULL": "null\\\\b",
-	"T_INDENT": "(\\\\s{4}|\\\\t)+",
+	"T_INDENT": "([ ]{4}|\\\\t)+",
 	"T_COMMENT": {"|": ["<T_MULTILINE_COMMENT>", "<T_SINGLELINE_COMMENT>"]},
 	"T_CLASS": ["class\\\\s+", "<T_CLASS_IDENTIFIER>", {"*": ["\\\\s+(extends|implements)\\\\s+", "<T_CLASS_IDENTIFIER>", {"*": [",\\\\s*", "<T_CLASS_IDENTIFIER>"]}]}, "<T_CLASS_BODY>"],
 	"T_MULTILINE_COMMENT": "###([^#]|#[^#]|##[^#])+###",
@@ -19,7 +19,7 @@ class SnowCompiler {
 	"T_TRY_CATCH": ["try", "<T_INDENTED_EXPRESSIONS>", "<T_NEWLINE>", "catch[ ]+", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>", {"?": ["<T_NEWLINE>", "finally", "<T_INDENTED_EXPRESSIONS>"]}],
 	"T_FN_DEF": ["fn\\\\s+", {"?": "<T_FNNAME>"}, {"?": ["\\\\s*\\\\(\\\\s*", "<T_PARAMETERS>", "\\\\s*\\\\)"]}, {"|": ["<T_INDENTED_EXPRESSIONS>", "<T_RETURN>"]}], 
 	"T_SIMPLE_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_FNCSCALL>", "<T_RETURN>", "<T_IDENTIFIER>", "<T_LITERAL>", "<T_CONST_DEF>", "<T_CONST>"]},
-	"T_CONDITION_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
+	"T_CONDITION_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
 	"T_CHAIN_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
 	"T_ASSIGNMENT": ["<T_IDENTIFIER>", "\\\\s*[\\\\+\\\\-\\\\*/\\\\%]?=\\\\s*", "<T_SIMPLE_EXPRESSION>"],
 	"T_RETURN": ["[ ]*<-\\\\s*", "<T_SIMPLE_EXPRESSION>"],
@@ -158,8 +158,9 @@ class SnowCompiler {
 		$result = "";
 		if ($tree = $this->checkRuleByName("T_EXPRESSIONS", 0, $debug)) {
 			if ($tree["len"] < strlen($this->code)) {
+				$lines = explode("\n", $this->code);
 				$line = count(explode("\n", substr($this->code, $tree["len"])));
-				throw new Exception("Error at line ".$line." while parsing input.");
+				throw new Exception("Error at line ".$line." while parsing input: \"".$lines[$line - 1]."\"");
 			}
 			$result = $this->doMapping($tree);
 			unset($tree);

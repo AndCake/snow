@@ -45,7 +45,7 @@ The notable differences are:
 * in addition to `==` and `!=` the compare operators can also be expressed using `is` and `isnt`
 * function calls without parameters can be written like `myfunc()` and `do myfunc`
 * variable typing is not allowed
-* array comprehension, named parameters, destructuring assignments and closures are not supported
+* array comprehension, named parameters and closures are not supported
 * inner functions are not only available inside the scope they are defined
 * classes work slightly different (only functions and comments are allowed within a class)
 * namespaces are not implemented, nor is the `import()` function
@@ -457,3 +457,17 @@ PHP:
 
 	Player::register("Ronaldo");
 	Player::$genders;
+
+De-structuring assignments
+--------------------------
+Snowscript has simple destructuring.
+
+Snow:
+
+	[a,, c] = [b, c, a]
+	[a, b, [c, d]] = do getLetters
+
+PHP:
+
+	list($a,, $c) = array($b, $c, $a);
+	list($a, $b, list($c, $d)) = getLetters();

@@ -11,6 +11,10 @@ for a, b in _POST['var']
 	print "{a} => {b}"
 	c = a % b
 
+# test for de-structuring assignments...
+[a,, c] = [c, a, b]
+[a, b, [c, d]] = letters
+
 """Hallo, Welt!
 {b}
 ich bin da"""
@@ -51,6 +55,7 @@ finally
 	echo "done"
 
 # nice comment
+
 class X extends Y
 
 	fn __construct

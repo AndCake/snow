@@ -18,10 +18,12 @@ class SnowCompiler {
 	"T_LOOP_CONTROL": "continue|break",
 	"T_TRY_CATCH": ["try", "<T_INDENTED_EXPRESSIONS>", "<T_NEWLINE>", "catch[ ]+", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>", {"?": ["<T_NEWLINE>", "finally", "<T_INDENTED_EXPRESSIONS>"]}],
 	"T_FN_DEF": ["fn\\\\s+", {"?": "<T_FNNAME>"}, {"?": ["\\\\s*\\\\(\\\\s*", "<T_PARAMETERS>", "\\\\s*\\\\)"]}, {"|": ["<T_INDENTED_EXPRESSIONS>", "<T_RETURN>"]}], 
-	"T_SIMPLE_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_FNCSCALL>", "<T_RETURN>", "<T_IDENTIFIER>", "<T_LITERAL>", "<T_CONST_DEF>", "<T_CONST>"]},
+	"T_SIMPLE_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_DESTRUCTURING_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_FNCSCALL>", "<T_RETURN>", "<T_IDENTIFIER>", "<T_LITERAL>", "<T_CONST_DEF>", "<T_CONST>"]},
 	"T_CONDITION_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
 	"T_CHAIN_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
 	"T_ASSIGNMENT": ["<T_IDENTIFIER>", "\\\\s*[\\\\+\\\\-\\\\*/\\\\%]?=\\\\s*", "<T_SIMPLE_EXPRESSION>"],
+	"T_DESTRUCTURING_ASSIGNMENT": ["<T_ARRAY_LITERAL_IDENTIFIER_ONLY>", "\\\\s*=\\\\s*", "<T_SIMPLE_EXPRESSION>"],
+	"T_ARRAY_LITERAL_IDENTIFIER_ONLY": ["\\\\s*\\\\[\\\\s*", {"*": [{"|": ["<T_IDENTIFIER>", "<T_ARRAY_LITERAL_IDENTIFIER_ONLY>"]}, "[,\\\\s]*"]}, "\\\\s*\\\\]"],
 	"T_RETURN": ["[ ]*<-\\\\s*", "<T_SIMPLE_EXPRESSION>"],
 	"T_FNCALL": {"|": ["<T_FNDOCALL>", "<T_FNPLAINCALL>", "<T_FN_CHAINCALL>"]},
 	"T_FNDOCALL": ["do\\\\s+", "<T_FNNAME>"],
@@ -144,7 +146,9 @@ class SnowCompiler {
 	"T_STRING_LITERAL_UQUOTE": "\\\\1",
 	"T_STRING_LITERAL_DQUOTE": "${E\\\\1/\\\\{([^}]+)\\\\}/\" . (\\\\1) . \"}",
 	"T_STRING_LITERAL_TQUOTE": "<<<EOF\\n${E\\\\2/\\\\{([^}]+)\\\\}/\\\\1}\\nEOF",
-	"T_FN_CHAINCALL": "${c}"
+	"T_FN_CHAINCALL": "${c}",
+	"T_DESTRUCTURING_ASSIGNMENT": "\\\\1 = \\\\3",
+	"T_ARRAY_LITERAL_IDENTIFIER_ONLY": "list(\\\\2)"
 }';
 		$this->language = json_decode($this->ebnf, true);
 		$this->mapping = json_decode($this->mapRules, true);
@@ -202,6 +206,8 @@ class SnowCompiler {
 			for ($i = 0; $i < count($parts) - 1; $i++) {
 				$tree = $tree[intval($parts[$i]) - 1];
 			}
+
+			if (!$tree[0] && !isset($tree["match"])) { $tree = array_pop($tree); }
 			$val = $this->getValue($tree, intval($parts[$i]) - 1);
 			$replacements[0][$matches[0][$key]] = $val;
 			$tree = $oldValue;

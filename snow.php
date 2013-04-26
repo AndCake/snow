@@ -31,7 +31,7 @@ ENDL;
 	$snow = new SnowCompiler($code);
 	$result = $snow->compile();
 
-	$result = "<?php\n" . $result."\n?>";
+	$result = "<?php\n" . $result.";\n?>";
 
 	if (!empty($outputFile)) {
 		file_put_contents($outputFile, $result);

@@ -1,77 +1,167 @@
-!VARI = _POST['var']
-var_dump _POST['var']
-if not !VARI or !VARI??
-	<- 'hallo!'
+# general example
+fn out
+	args = func_get_args()
+	echo " "->implode(args)
+	<- count args
 
-/^[a-z]+$/i->preg_match(myvar, match)
-if match[0]??
-	echo "Only letters"
-
-for a, b in _POST['var']
-	print "{a} => {b}"
-	c = a % b
-
-# test for de-structuring assignments...
-[a,, c] = [c, a, b]
-[a, b, [c, d]] = letters
-
-"""Hallo, Welt!
-{b}
-ich bin da"""
-
-b = 10
-a = 0
-while a < b and b < 20
-	a->substr(2, 3)->strtoupper()->minkel('test')->lcfirst()
-
-fn retrieve(a) <- data.getList 'test' + a
-do retrieve
-
-for i in b downto 20 step 2
-	if i isnt b
-		c = ', ' 
-		i++
-	elif i isnt a
-		c = ''
-		i--
-		### 
-			this is my large multiline comment
-			here...
-			and here too
-		###
-	elif a?
-		c = ', '
-		throw new Exception('why?')
+fn how_big_is_it(number)
+	if number < 100
+		<- 'small'
 	else
-		break
+		<- 'big'
 
-	echo c % i
+randomNumber = rand(0, 1000)
+randomNumber->how_big_is_it()->out(" is the number {randomNumber}.")
 
-try
-	retrieve 2
-catch e
-	error_log e.getMessage()
-finally
-	echo "done"
+for i in 1 to randomNumber
+	out "{i}: hallo"
 
-# nice comment
+# variables
+fungus = "Sarcoscypha coccinea"
 
-class X extends Y
+# constants
+!DB_ENGINE = 'mysql'
 
-	fn __construct
-		Y..a = "test"
-		do Y..a
-		echo @test.doIt
+# comparison
+a is b and c != d
+if myFeet() > averageFeet
+	echo("BIGFOOT")
 
-	fn doIt(what)
-		<- what
+# comments
+# single line comment
+###
+	multi line 
+	comment
+###
 
-b = new X()
-a = [
-	"test": 1,
-	"ho": 2, 
-	"sub": [5, 'test']
+# quoted strings
+fn travel
+	echo "
+		The {animal} went to {world.place()}
+		with his {!NUM} friends.
+	"
+
+"""<a href="https://snowscript.org">Snowscript</a>\n"""
+
+'no {magic} here'
+
+# string concatenation
+myString = "test"
+value = _SERVER['REQUEST_STRING']
+echo "I am " + "legend!"
+echo myString % value
+
+# regular expressions
+/^[a-z']+$/i->preg_match myvar, match
+if match[0]??
+	echo "It has only letters"
+
+# lists
+pianists = ["McCoy Tyner", "Fred Hersch", "Bill Evans"]
+# Fred Hersch
+echo pianists[1]
+
+# dictionaries
+series = [
+	'Heroes': [
+		'genre': 'Science Fiction',
+		'creator': 'Tim Kring',
+		'seasons': 4,
+	],
+	'Game Of Thrones': [
+		'genre': 'Medieval fantasy',
+		'creator': 'David Benioff',
+		'seasons': 2,
+	]
 ]
-"hehe {a} hoho"
+echo series['Heroes']['genre']
 
+# functions
+fn findMessage(fancystring = "sample message")
+	<- fancystring->ucfirst()
 
+someResult = 2
+print("Test")
+var_dump fancyObject, someResult
+message = do findMessage
+
+# chaining
+echo "peter"->ucfirst()->str_rot13()
+
+fn fight_valiantly <- out "fighting..."
+fn improvise <- out "improvising..."
+fn run <- out "running..."
+fn try_this <- null
+
+white_walkers = []
+feeling_lucky = rand(0, 100) > 50
+height = 175
+veryHigh = 190
+field = []
+
+# control structures
+if white_walkers->count() < 500
+	do fight_valiantly
+elif feeling_lucky
+	do improvise
+else
+	do run
+
+# ternary operators
+a = if height is veryHigh then "tall" else "small"
+
+# existence 
+if field['title']? or !RANDOM_STUFF?
+	improvise()
+
+stuff = if try_this()?? then "Something" else "Default"
+
+# loops
+for data, title in flowers
+	echo "{data.id}: {title}"
+
+for i in 1 to 10 step 2
+	echo i
+for i in 10 downto 1
+	echo i
+
+# while
+i = 0
+while i < 10
+	i++
+	echo "Rinse and repeat."
+
+# classes
+class Air
+	static fn run
+		<- "Air is running."
+
+class Wind extends Air
+
+	fn Wind(speed, angle)
+		Air..a = speed
+		value = do Air..run
+		@test = angle
+		echo value
+
+	static fn create(speed = 0, angle = 0)
+		<- new Wind speed, angle
+
+	fn blow()
+		<- @test * Air..a
+
+wind = new Wind(52, 12)
+do wind.blow
+
+Wind..create(23, 1)
+Wind..run()
+
+# de-structuring assignments
+a = 1
+b = 5
+c = 2
+fn getLetters
+	<- [1, 2, 3, 4]
+
+[a,, c] = [b, c, a]
+[a, b, [c, d]] = do getLetters

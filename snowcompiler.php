@@ -1,6 +1,6 @@
 <?php
 class SnowCompiler {
-	const VERSION = '0.0.3';
+	const VERSION = '0.0.4';
 
 	protected $ebnf = '
 {
@@ -12,12 +12,13 @@ class SnowCompiler {
 	"T_SINGLELINE_COMMENT": "#([^\\n]*)",
 	"T_INCDEC": ["<T_IDENTIFIER>", "\\\\s*(\\\\+\\\\+)|(--)"],
 	"T_INDENTED_EXPRESSIONS": {"+": ["<T_NEWLINE>", "<T_INDENT>", "<T_EXPRESSION>"]},
-	"T_CLASS_BODY": {"+": ["[ ]*[\\r\\n]+", "<T_INDENT>", {"|":["<T_FN_DEF>", "<T_COMMENT>"]}]},
+	"T_CLASS_BODY": {"+": ["[ ]*[\\r\\n]+", "<T_INDENT>", {"|":["<T_CLASS_FN_DEF>", "<T_COMMENT>"]}]},
+	"T_CLASS_FN_DEF": [{"?": "(static|public|private|protected)\\\\s+"}, "<T_FN_DEF>"],
 	"T_EXPRESSIONS": {"+": ["<T_EXPRESSION>", "<T_NEWLINE>"]},
 	"T_EXPRESSION": {"|": ["<T_FN_DEF>", "<T_IF>", "<T_LOOP>", "<T_CLASS>", "<T_COMMENT>", "<T_LOOP_CONTROL>", "<T_TRY_CATCH>", "<T_SIMPLE_EXPRESSION>"]},
 	"T_LOOP_CONTROL": "continue|break",
 	"T_TRY_CATCH": ["try", "<T_INDENTED_EXPRESSIONS>", "<T_NEWLINE>", "catch[ ]+", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>", {"?": ["<T_NEWLINE>", "finally", "<T_INDENTED_EXPRESSIONS>"]}],
-	"T_FN_DEF": ["fn\\\\s+", {"?": "<T_FNNAME>"}, {"?": ["\\\\s*\\\\(\\\\s*", "<T_PARAMETERS>", "\\\\s*\\\\)"]}, {"|": ["<T_INDENTED_EXPRESSIONS>", "<T_RETURN>"]}], 
+	"T_FN_DEF": ["fn\\\\s+", {"?": "<T_FNNAME>"}, {"?": ["\\\\s*\\\\(\\\\s*", {"?": "<T_PARAMETERS>"}, "\\\\s*\\\\)"]}, {"|": ["<T_INDENTED_EXPRESSIONS>", "<T_RETURN>"]}], 
 	"T_SIMPLE_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_DESTRUCTURING_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_FNCSCALL>", "<T_RETURN>", "<T_IDENTIFIER>", "<T_LITERAL>", "<T_CONST_DEF>", "<T_CONST>"]},
 	"T_CONDITION_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
 	"T_CHAIN_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
@@ -27,9 +28,9 @@ class SnowCompiler {
 	"T_RETURN": ["[ ]*<-\\\\s*", "<T_SIMPLE_EXPRESSION>"],
 	"T_FNCALL": {"|": ["<T_FNDOCALL>", "<T_FNPLAINCALL>", "<T_FN_CHAINCALL>"]},
 	"T_FNDOCALL": ["do\\\\s+", "<T_FNNAME>"],
-	"T_FNCSCALL": ["<T_FNNAME>", "[ ]+", "<T_FN_PARAMETERS1>"],
+	"T_FNCSCALL": ["(new\\\\s+)?", "<T_FNNAME>", "[ ]+", "<T_FN_PARAMETERS1>"],
 	"T_FNPLAINCALL": ["(new\\\\s+)?", "<T_FNNAME>", "\\\\s*\\\\(\\\\s*", "<T_FN_PARAMETERS>", "\\\\s*\\\\)"],
-	"T_FN_CHAINCALL": ["<T_CHAIN_EXPRESSION>", {"+": ["->", "<T_FNNAME>", "\\\\s*\\\\(\\\\s*", "<T_FN_PARAMETERS>", "\\\\s*\\\\)"]}],
+	"T_FN_CHAINCALL": ["<T_CHAIN_EXPRESSION>", "\\\\s*->", {"*": ["<T_FNNAME>", "\\\\s*\\\\(\\\\s*", "<T_FN_PARAMETERS>", "\\\\s*\\\\)\\\\s*->"]}, {"|": ["<T_FNCSCALL>", "<T_FNPLAINCALL>"]}],
 	"T_FN_PARAMETERS1": ["<T_SIMPLE_EXPRESSION>", {"*": ["\\\\s*,\\\\s*", "<T_SIMPLE_EXPRESSION>"]}],
 	"T_FN_PARAMETERS": {"?": ["<T_SIMPLE_EXPRESSION>", {"*": ["\\\\s*,\\\\s*", "<T_SIMPLE_EXPRESSION>"]}]},
 	"T_CONST_DEF": ["<T_CONST>", "\\\\s*=\\\\s*", "<T_SIMPLE_EXPRESSION>"],
@@ -38,7 +39,7 @@ class SnowCompiler {
 	"T_FOR_COUNT_UP_LOOP": ["for\\\\s+", "<T_IDENTIFIER>", "\\\\s+in\\\\s+", "<T_CONDITION_EXPRESSION>", "\\\\s*to\\\\s+", "<T_CONDITION_EXPRESSION>", {"?": ["\\\\s+step\\\\s+", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
 	"T_FOR_COUNT_DOWN_LOOP": ["for\\\\s+", "<T_IDENTIFIER>", "\\\\s+in\\\\s+", "<T_CONDITION_EXPRESSION>", "\\\\s*downto\\\\s+", "<T_CONDITION_EXPRESSION>", {"?": ["\\\\s+step\\\\s+", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
 	"T_FOR_LOOP": ["for\\\\s+", "<T_IDENTIFIER>", {"?": [", ", "<T_IDENTIFIER>"]}, "\\\\s+in\\\\s+", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>"],
-	"T_FNNAME": "(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[A-Za-z][_a-zA-Z0-9.]*",
+	"T_FNNAME": "(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|new\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[A-Za-z][_a-zA-Z0-9.]*",
 	"T_IF": ["if\\\\s+", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>", {"*": ["<T_ELIF>"]}, {"?": ["<T_ELSE>"]}],
 	"T_ELSE": ["\\\\s*else[ ]*", "<T_INDENTED_EXPRESSIONS>"],
 	"T_ELIF": ["\\\\s+elif\\\\s+", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
@@ -46,7 +47,7 @@ class SnowCompiler {
 	"T_PCONDITION": {"|": [["\\\\s*\\\\(\\\\s*", "<T_CONDITION>", "\\\\s*\\\\)"], "<T_CONDITION>"]},
 	"T_CONDITION": ["<T_CONDITION_PART>", {"*": ["<T_BOOL_OP>", "<T_CONDITION_PART>"]}],
 	"T_CONDITION_PART": {"|": ["<T_PCOMPARISON>", [{"?": ["<T_BOOL_NEGATION>"]}, {"|": ["<T_EMPTY>", "<T_EXISTS>", "<T_SIMPLE_EXPRESSION>"]}]]},
-	"T_EMPTY": [{"|": ["<T_IDENTIFIER>", "<T_CONST>"]}, "\\\\?\\\\?"],
+	"T_EMPTY": [{"|": ["<T_CONST>", "<T_CHAIN_EXPRESSION>"]}, "\\\\?\\\\?"],
 	"T_EXISTS": [{"|": ["<T_IDENTIFIER>", "<T_CONST>"]}, "\\\\?"],
 	"T_WHILE": ["while\\\\s+", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
 	"T_PCOMPARISON": {"|": [["\\\\s*\\\\(\\\\s*", "<T_COMPARISON>", "\\\\s*\\\\)"], "<T_COMPARISON>"]},
@@ -107,6 +108,7 @@ class SnowCompiler {
 	"T_NEWLINE": ";\\n",
 	"T_TRY_CATCH": "try {\\\\2;\\n} catch (Exception \\\\5) {'.(PHP_VERSION_ID >= 50500 ? '' : '\\n\\t$catchGuard = true\\\\7.3').'\\\\6;\\n}'.(PHP_VERSION_ID >= 50500 ? '${\\\\7.3? finally {\\\\7.3;\\n}/}' : '\\nif(!isset($catchGuard)) {\\\\7.3;\\n} else {\\n\\tunset($catchGuard);\\n}\\n').'",
 	"T_CLASS": "class \\\\2\\\\3 {\\\\4\\n}",
+	"T_CLASS_FN_DEF": "\\\\1\\\\2",
 	"T_MULTILINE_COMMENT": "/*${R\\\\1/#/}*/",
 	"T_SINGLELINE_COMMENT": "//${R\\\\1/#/}",
 	"T_BOOL_AND": "&&",
@@ -117,7 +119,7 @@ class SnowCompiler {
 	"T_COMPLEX_OPERATION": "\\\\1\\\\2",
 	"T_COMPLEX_STRING_OPERATION": "\\\\1 . \\\\2.2",
 	"T_EXISTS": "${\\\\1.2?defined(\'\\\\1\')/isset(\\\\1)}",
-	"T_EMPTY": "(${\\\\1.2?defined(\'\\\\1\') && strlen(\\\\1) > 0/isset(\\\\1) && !empty(\\\\1)})",
+	"T_EMPTY": "(${\\\\1.1?defined(\'\\\\1\') && strlen(\\\\1) > 0/(($_tmp1 = (\\\\1)) || true) && isset($_tmp1) && !empty($_tmp1) && (($_tmp1 = null) || true) || ($_tmp1 = null)})",
 	"T_FN_DEF": "function \\\\2(\\\\3.2) {\\\\4;}",
 	"T_EQUALS_COMPARISON": "\\\\1 === \\\\3",
 	"T_NEQUALS_COMPARISON": "\\\\1 !== \\\\3",
@@ -136,10 +138,10 @@ class SnowCompiler {
 	"T_KEYVALUE_PAIR": "\\\\1 => \\\\3",
 	"T_NUMBER_LITERAL": "\\\\1",
 	"T_BOOLEAN_LITERAL": "\\\\1",
-	"T_REGEXP_LITERAL": "\'\\\\1\'",
+	"T_REGEXP_LITERAL": "\'${R\\\\1/\'/\\\\\'}\'",
 	"T_WHILE": "while (\\\\2) {\\\\3;}\\n",
 	"T_FNPLAINCALL": "\\\\1${R\\\\2/^@/$this->}${R\\\\2/^(\\\\w+)\\\\.\\\\./\\\\1::}${R\\\\2/^(\\\\w+)\\\\./$\\\\1->}(\\\\4)",
-	"T_FNCSCALL": "${R\\\\1/^@/$this->}${R\\\\1/^(\\\\w+)\\\\.\\\\./\\\\1::}${R\\\\1/^(\\\\w+)\\\\./$\\\\1->}(\\\\3)",
+	"T_FNCSCALL": "\\\\1${R\\\\2/^@/$this->}${R\\\\2/^(\\\\w+)\\\\.\\\\./\\\\2::}${R\\\\2/^(\\\\w+)\\\\./$\\\\2->}(\\\\4)",
 	"T_FNDOCALL": "${R\\\\2/^@/$this->}${R\\\\2/^(\\\\w+)\\\\.\\\\./\\\\1::}${R\\\\2/^(\\\\w+)\\\\./$\\\\1->}();\\n",
 	"T_ASSIGNMENT": "\\\\1 \\\\2 \\\\3",
 	"T_RETURN": "return \\\\2;\\n",
@@ -175,15 +177,25 @@ class SnowCompiler {
 		return $result;
 	}
 
-	function buildChain($chain, $root, $template) {
-		$slice = array_splice($chain, count($chain) - 5, 5);
-		$template = $this->getValue($slice[1])."(";
+	function buildChain($chain, $last, $root, $template) {
+		$offset = 1;
+		if (!empty($last)) {
+			if (count($last) > 1) {
+				$slice = array_pop($last[1]);
+			} else {
+				$slice = array_pop($last[0]);
+				$offset = 1;
+			}
+		} else {
+			$slice = array_splice($chain, count($chain) - 5, 5);
+		}
+		$template = $this->getValue($slice[$offset])."(";
 		if (count($chain) > 0) {
-			$template .= $this->buildChain($chain, $root, $template);
+			$template .= $this->buildChain($chain, null, $root, $template);
 		} else {
 			$template .= $root;
 		}
-		$params = $this->getValue($slice[3]);
+		$params = $this->getValue($slice[2 + $offset]);
 		if (!empty($params)) {
 			$template .= ", ".$params;
 		}
@@ -195,7 +207,7 @@ class SnowCompiler {
 		$replacements = Array();
 		preg_match('/\\$\\{c\\}/m', $template, $chain);
 		if (count($chain) > 0) {
-			$template = $this->buildChain($tree[1], $this->getValue($tree[0]), $template);
+			$template = $this->buildChain($tree[2], $tree[3], $this->getValue($tree[0]), $template);
 			return $template;
 		}
 
@@ -207,7 +219,7 @@ class SnowCompiler {
 				$tree = $tree[intval($parts[$i]) - 1];
 			}
 
-			if (!$tree[0] && !isset($tree["match"])) { $tree = array_pop($tree); }
+			if (($tree[0] !== null && !isset($tree[0])) && !isset($tree["match"])) { $tree = array_pop($tree); }
 			$val = $this->getValue($tree, intval($parts[$i]) - 1);
 			$replacements[0][$matches[0][$key]] = $val;
 			$tree = $oldValue;

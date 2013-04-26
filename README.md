@@ -134,7 +134,7 @@ Snow:
 	fn travel
 	    echo "
 	    	The {animal} went to {world.place()}
-	        with his {NUM} friends.
+	        with his {!NUM} friends.
 	    "
 
 	"""<a href="https://snowscript.org">Snowscript</a>\n"""
@@ -360,7 +360,7 @@ PHP:
 		do_stuff();
 	}
 
-	$stuff = (!empty(try_this()) ? that['girl'] : "Default");
+	$stuff = (((($_tmp1 = (try_this())) || true) && isset($_tmp1) && !empty($_tmp1) && (($_tmp1 = null) || true) || ($_tmp1 = null)) ? $that['girl'] : "Default");
 
 Loops
 -----

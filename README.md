@@ -217,13 +217,19 @@ The values are assigned running integers and can be accessed with "`[]`".
 
 Snow:
 
-	# Fred Hersch
+	# => Fred Hersch
 	echo pianists[1]
+
+	# => Fred Hersch, Bill Evans
+	echo pianists[1...2]->join ", "
 
 PHP:
 
-	// Fred Hersch
-	echo(pianists[1]);
+	// => Fred Hersch
+	echo($pianists[1]);
+
+	// => Fred Hersch, Bill Evans
+	echo(join(array_slice($pianists, $_tmp3 = (1), (2) - $_tmp3 + 1), ", "));
 
 #### Dictionary
 The key and value of each key/value pair are separated by ":".

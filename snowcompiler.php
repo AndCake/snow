@@ -62,7 +62,7 @@ class SnowCompiler {
 	"T_ARRAY_LITERAL": ["\\\\s*\\\\[\\\\s*", {"*": [{"|": ["<T_KEYVALUE_PAIR>", "<T_CONDITION_EXPRESSION>"]}, "\\\\s*[,]?\\\\s*"]}, "\\\\s*\\\\]"],
 	"T_KEYVALUE_PAIR": ["<T_LITERAL>", "\\\\s*:\\\\s*", "<T_CONDITION_EXPRESSION>"],
 	"T_STRING_LITERAL": {"|": ["<T_STRING_LITERAL_UQUOTE>", "<T_STRING_LITERAL_TQUOTE>", "<T_STRING_LITERAL_DQUOTE>"]},
-	"T_IDENTIFIER": ["(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9.]*)", {"*": ["\\\\[", "<T_CONDITION_EXPRESSION>", "\\\\]"]}],
+	"T_IDENTIFIER": ["(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)", {"*": ["\\\\[", "<T_CONDITION_EXPRESSION>", {"?": ["\\\\s*\\\\.\\\\.\\\\.\\\\s*", "<T_CONDITION_EXPRESSION>"]}, "\\\\]"]}],
 	"T_UPPERCASE_IDENTIFIER": "_*[A-Z_]+",
 	"T_CLASS_IDENTIFIER": "_*[A-Z][a-zA-Z0-9]*",
 	"T_OPERATION": {"|": ["<T_COMPLEX_OPERATION>", "<T_COMPLEX_STRING_OPERATION>", "<T_INCDEC>"]},
@@ -102,7 +102,7 @@ class SnowCompiler {
 	protected $successStack = null;
 	protected $indentationLevel = 0;
 
-	function __construct($code) {
+	function __construct($code, $complete = true) {
 		$this->mapRules = '{
 	"T_IF": "if (\\\\2) {\\\\3;\\n}\\\\4\\\\5\\n",
 	"T_NEWLINE": ";\\n",
@@ -125,7 +125,7 @@ class SnowCompiler {
 	"T_NEQUALS_COMPARISON": "\\\\1 !== \\\\3",
 	"T_GT_COMPARISON": "(gettype($_tmp1 = \\\\1) === gettype($_tmp2 = \\\\3) && ($_tmp1 \\\\2 $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))",
 	"T_LT_COMPARISON": "(gettype($_tmp1 = \\\\1) === gettype($_tmp2 = \\\\3) && ($_tmp1 \\\\2 $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))",
-	"T_IDENTIFIER": "${\\\\1~=(^(true|false|null)$)|\\\\.\\\\.?/$}${R\\\\1/\\\\.\\\\./::$}${R\\\\1/@(.+)/this->\\\\1}${R\\\\1/\\\\./->}\\\\2",
+	"T_IDENTIFIER": "${\\\\2.3?array_slice(/}${\\\\1~=(^(true|false|null)$)|\\\\.\\\\.?/$}${R\\\\1/\\\\.\\\\./::$}${R\\\\1/@(.+)/this->\\\\1}${R\\\\1/\\\\./->}${\\\\2.3?, $_tmp3 = (\\\\2.2), (\\\\2.3.2) - $_tmp3 + 1)/\\\\2}",
 	"T_CONST_DEF": "define(\\"\\\\1\\", \\\\3)",
 	"T_CONST": "\\\\2",
 	"T_ELSE": " else {\\\\2;\\n}",
@@ -154,7 +154,7 @@ class SnowCompiler {
 }';
 		$this->language = json_decode($this->ebnf, true);
 		$this->mapping = json_decode($this->mapRules, true);
-		$this->code = trim($code);
+		$this->code = trim($code) . ($complete ? "\nnull" : "");
 		$this->stack = Array();
 		$this->indentationLevel = 0;
 		$this->successStack = Array();
@@ -258,13 +258,14 @@ class SnowCompiler {
 				preg_match_all('/'.$evalMatches[2][$key].'/m', $repl["\\".$match], $evals);
 				if (is_array($evals[1])) {
 					foreach ($evals[1] as $k => $m) {
-						$sn = new SnowCompiler($m);
+						$sn = new SnowCompiler($m, false);
 						$repl["\\".$match] = str_replace($evals[0][$k], str_replace('\\1', $sn->compile(), $evalMatches[3][$key]), $repl['\\'.$match]);
 					}
 				}
 				$resultTemplate = str_replace($evalMatches[0][$key], "\\".$match, $resultTemplate);
 			}
 			# need to somehow make it also take the recurse command into consideration...
+			uksort($repl, create_function("\$a, \$b", 'return strlen($b) - strlen($a);'));
 			foreach ($repl as $key => $re) {
 				# probably only needs to take the sub string into account that comes after the <Rx>
 				$resultTemplate = str_replace($key, $re, $resultTemplate);

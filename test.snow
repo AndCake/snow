@@ -58,8 +58,10 @@ if match[0]??
 
 # lists
 pianists = ["McCoy Tyner", "Fred Hersch", "Bill Evans"]
-# Fred Hersch
+# => Fred Hersch
 echo pianists[1]
+# => Fred Hersch, Bill Evans
+echo pianists[1...2]->join ", "
 
 # dictionaries
 series = [

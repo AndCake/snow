@@ -2,6 +2,7 @@
 fn out
 	args = func_get_args()
 	echo " "->implode(args)
+	echo "\n"
 	<- count args
 
 fn how_big_is_it(number)
@@ -10,7 +11,7 @@ fn how_big_is_it(number)
 	else
 		<- 'big'
 
-randomNumber = rand(0, 1000)
+randomNumber = rand(0, 10)
 randomNumber->how_big_is_it()->out(" is the number {randomNumber}.")
 
 for i in 1 to randomNumber
@@ -24,8 +25,10 @@ fungus = "Sarcoscypha coccinea"
 
 # comparison
 a is b and c != d
+averageFeet = 1
+fn myFeet <- 1.1
 if myFeet() > averageFeet
-	echo("BIGFOOT")
+	echo("BIGFOOT\n")
 
 # comments
 # single line comment
@@ -41,27 +44,27 @@ fn travel
 		with his {!NUM} friends.
 	"
 
-"""<a href="https://snowscript.org">Snowscript</a>\n"""
+"""<a href="https://snowscript.{animal}">Snowscript</a>\n"""
 
 'no {magic} here'
 
 # string concatenation
 myString = "test"
-value = _SERVER['REQUEST_STRING']
-echo "I am " + "legend!"
+value = _SERVER['REQUEST_STRING'] + "\n"
+echo "I am " + "legend!\n"
 echo myString % value
 
 # regular expressions
 /^[a-z']+$/i->preg_match myvar, match
 if match[0]??
-	echo "It has only letters"
+	echo "It has only letters\n"
 
 # lists
 pianists = ["McCoy Tyner", "Fred Hersch", "Bill Evans"]
 # => Fred Hersch
-echo pianists[1]
+echo pianists[1] + "\n"
 # => Fred Hersch, Bill Evans
-echo pianists[1...2]->join ", "
+echo pianists[1...2]->join(", ") + "\n"
 
 # dictionaries
 series = [
@@ -76,23 +79,23 @@ series = [
 		'seasons': 2,
 	]
 ]
-echo series['Heroes']['genre']
+echo series['Heroes']['genre'] + "\n"
 
 # functions
 fn findMessage(fancystring = "sample message")
 	<- fancystring->ucfirst()
 
 someResult = 2
-print("Test")
+print("Test\n")
 var_dump fancyObject, someResult
 message = do findMessage
 
 # chaining
-echo "peter"->ucfirst()->str_rot13()
+echo "peter"->ucfirst()->str_rot13() + "\n"
 
-fn fight_valiantly <- out "fighting..."
-fn improvise <- out "improvising..."
-fn run <- out "running..."
+fn fight_valiantly <- out "fighting...\n"
+fn improvise <- out "improvising...\n"
+fn run <- out "running...\n"
 fn try_this <- null
 
 white_walkers = []
@@ -108,6 +111,10 @@ elif feeling_lucky
 	do improvise
 else
 	do run
+	if foundHideout()
+		do hide
+	else
+		do run
 
 # ternary operators
 a = if height is veryHigh then "tall" else "small"
@@ -119,24 +126,26 @@ if field['title']? or !RANDOM_STUFF?
 stuff = if try_this()?? then "Something" else "Default"
 
 # loops
+flowers = ["Violet": ["id": 1], "Rose": ["id": 2]]
 for data, title in flowers
-	echo "{data.id}: {title}"
+	echo "{data['id']}: {title}\n"
 
 for i in 1 to 10 step 2
-	echo i
+	echo i + ", "
 for i in 10 downto 1
-	echo i
+	echo i + ", "
 
 # while
 i = 0
 while i < 10
 	i++
-	echo "Rinse and repeat."
+	echo "Rinse and repeat.\n"
 
 # classes
 class Air
+	static a = 0
 	static fn run
-		<- "Air is running."
+		<- "Air is running.\n"
 
 class Wind extends Air
 
@@ -150,7 +159,8 @@ class Wind extends Air
 		<- new Wind speed, angle
 
 	fn blow()
-		<- @test * Air..a
+		if @test * Air..a isnt 0
+			<- @test * Air..a
 
 wind = new Wind(52, 12)
 do wind.blow

@@ -1,0 +1,67 @@
+include_once "snowcompiler.php"
+outputFile = null
+interactive = true
+compileOnly = false
+
+if count(argv) > 1
+	result = getopt "o:c:h"
+	
+	if count(result) <= 0
+		for _val, i in argv
+			if i > 0
+				if _val[0] is '-'
+					result[_val[1]] = ""
+				else
+					code = file_get_contents _val
+					interactive = false
+
+	if result['o']??
+		outputFile = result['o']
+	if result['c']??
+		code = file_get_contents result['c']
+		interactive = false
+		compileOnly = true
+	else if result['c']?
+		compileOnly = true
+
+	if result['h']?
+		ver = SnowCompiler..VERSION
+		help = """
+Snow Script Compiler Version {ver}
+
+Syntax:
+	{argv[0]} [-o <output file>] [-ch] [<input file>]
+
+	-o <output file> - write the compiled result into the given file. If this parameter is missing, the compiled result will be written to stdout.
+	-c               - the input should only be compiled - not executed
+	-h               - shows this help
+	<input file>     - the file that should be used as input. if this parameter is omitted, an interactive console will let you enter commands.
+"""
+		die help
+
+if interactive
+	fp = fopen "php://stdin", 'r'
+	input = ""
+	while not feof fp
+		input = input % fread(fp, 4096)
+	code = input
+
+snow = new SnowCompiler(code)
+result = do snow.compile
+
+if compileOnly is true
+	result = "<?php\n{result};\n?>"
+	if outputFile??
+		file_put_contents outputFile, result
+	else
+		echo result
+else if compileOnly is false
+	echo "\n==> Result: \n"
+	lines = ";"->explode(result)
+	for i in count(lines) - 1 downto 0
+		trimmed = trim lines[i]
+		if not empty trimmed
+			lines[i] = "return " + lines[i]
+			break
+	result = eval ";"->implode lines
+	echo result

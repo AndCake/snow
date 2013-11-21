@@ -1,73 +1,147 @@
 <?php
+$break = false;
+
+function breakpoint() {
+	global $break;
+	$break = true;
+}
+
+function debugger($vars = null) {
+	global $break;
+	if (!$break) return; 
+	echo "\nDEBUGGER HALT. PRESS RETURN TO CONTINUE; PRESS S TO PRINT THE FULL STACK TRACE; PRESS SPACE TO CONTINUE EXECUTION.\n";
+	var_dump($vars);
+	$trace = debug_backtrace();
+	echo $trace[1]["function"] . ":" . $trace[0]["line"]."\n";
+	system("stty -icanon");
+	$c = fread(STDIN, 1);
+	system("stty sane");
+	if ($c == "\n") {
+		return;
+	} else if ($c == " ") {
+		$break = false;
+		return;
+	} else if ($c == "s") {
+		debug_print_backtrace();
+		debugger($vars);
+	}
+}
+
 class SnowCompiler {
-	const VERSION = '0.0.4';
+	static $VERSION = '0.0.5';
 
 	protected $ebnf = '
 {
 	"T_NULL": "null\\\\b",
-	"T_INDENT": "(\\\\s{4}|\\\\t)+",
+	"T_INDENT": "([ ]{4}|\\\\t)+",
 	"T_COMMENT": {"|": ["<T_MULTILINE_COMMENT>", "<T_SINGLELINE_COMMENT>"]},
-	"T_CLASS": ["class\\\\s+", "<T_CLASS_IDENTIFIER>", {"*": ["\\\\s+(extends|implements)\\\\s+", "<T_CLASS_IDENTIFIER>", {"*": [",\\\\s*", "<T_CLASS_IDENTIFIER>"]}]}, "<T_CLASS_BODY>"],
+	"T_CLASS": ["<T_KEY_CLASS>", "<T_CLASS_IDENTIFIER>", {"*": ["<T_KEY_CLASSTREE>", "<T_CLASS_IDENTIFIER>", {"*": ["<T_COMMA>", "<T_CLASS_IDENTIFIER>"]}]}, "<T_CLASS_BODY>"],
 	"T_MULTILINE_COMMENT": "###([^#]|#[^#]|##[^#])+###",
 	"T_SINGLELINE_COMMENT": "#([^\\n]*)",
-	"T_INCDEC": ["<T_IDENTIFIER>", "\\\\s*(\\\\+\\\\+)|(--)"],
+	"T_INCDEC": ["<T_IDENTIFIER>", "<T_INCDEC_OPERATOR>"],
 	"T_INDENTED_EXPRESSIONS": {"+": ["<T_NEWLINE>", "<T_INDENT>", "<T_EXPRESSION>"]},
-	"T_CLASS_BODY": {"+": ["[ ]*[\\r\\n]+", "<T_INDENT>", {"|":["<T_CLASS_FN_DEF>", "<T_COMMENT>"]}]},
-	"T_CLASS_FN_DEF": [{"?": "(static|public|private|protected)\\\\s+"}, "<T_FN_DEF>"],
+	"T_CLASS_BODY": {"+": ["<T_NEWLINE>", "<T_INDENT>", {"|":["<T_CLASS_FN_DEF>", "<T_CLASS_VAR_DEF>", "<T_CLASS_CONST_DEF>", "<T_COMMENT>"]}]},
+	"T_CLASS_FN_DEF": [{"?": "<T_KEY_ATTRVISIBILITY>"}, "<T_FN_DEF>"],
+	"T_CLASS_VAR_DEF": [{"?": "<T_KEY_ATTRVISIBILITY>"}, "<T_PARAMETER>"],
+	"T_CLASS_CONST_DEF": ["<T_CONST>", "<T_ASSIGN>", "<T_LITERAL>"],
 	"T_EXPRESSIONS": {"+": ["<T_EXPRESSION>", "<T_NEWLINE>"]},
 	"T_EXPRESSION": {"|": ["<T_FN_DEF>", "<T_IF>", "<T_LOOP>", "<T_CLASS>", "<T_COMMENT>", "<T_LOOP_CONTROL>", "<T_TRY_CATCH>", "<T_SIMPLE_EXPRESSION>"]},
 	"T_LOOP_CONTROL": "continue|break",
-	"T_TRY_CATCH": ["try", "<T_INDENTED_EXPRESSIONS>", "<T_NEWLINE>", "catch[ ]+", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>", {"?": ["<T_NEWLINE>", "finally", "<T_INDENTED_EXPRESSIONS>"]}],
-	"T_FN_DEF": ["fn\\\\s+", {"?": "<T_FNNAME>"}, {"?": ["\\\\s*\\\\(\\\\s*", {"?": "<T_PARAMETERS>"}, "\\\\s*\\\\)"]}, {"|": ["<T_INDENTED_EXPRESSIONS>", "<T_RETURN>"]}], 
+	"T_TRY_CATCH": ["<T_KEY_TRY>", "<T_INDENTED_EXPRESSIONS>", "<T_NEWLINE>", "<T_KEY_CATCH>", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>", {"?": ["<T_NEWLINE>", "<T_KEY_FINALLY>", "<T_INDENTED_EXPRESSIONS>"]}],
+	"T_FN_DEF": ["<T_KEY_FN>", {"?": "<T_IDENTIFIER_NAME>"}, {"?": ["<T_RBRACKET_OPEN>", {"?": "<T_PARAMETERS>"}, "<T_RBRACKET_CLOSE>"]}, {"|": ["<T_INDENTED_EXPRESSIONS>", "<T_RETURN>"]}], 
 	"T_SIMPLE_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_DESTRUCTURING_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_FNCSCALL>", "<T_RETURN>", "<T_IDENTIFIER>", "<T_LITERAL>", "<T_CONST_DEF>", "<T_CONST>"]},
-	"T_CONDITION_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
+	"T_CONDITION_EXPRESSION": {"|": [["<T_RBRACKET_OPEN>", {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]}, "<T_RBRACKET_CLOSE>"], {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]}]},
 	"T_CHAIN_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
-	"T_ASSIGNMENT": ["<T_IDENTIFIER>", "\\\\s*[\\\\+\\\\-\\\\*/\\\\%]?=\\\\s*", "<T_SIMPLE_EXPRESSION>"],
-	"T_DESTRUCTURING_ASSIGNMENT": ["<T_ARRAY_LITERAL_IDENTIFIER_ONLY>", "\\\\s*=\\\\s*", "<T_SIMPLE_EXPRESSION>"],
-	"T_ARRAY_LITERAL_IDENTIFIER_ONLY": ["\\\\s*\\\\[\\\\s*", {"*": [{"|": ["<T_IDENTIFIER>", "<T_ARRAY_LITERAL_IDENTIFIER_ONLY>"]}, "[,\\\\s]*"]}, "\\\\s*\\\\]"],
-	"T_RETURN": ["[ ]*<-\\\\s*", "<T_SIMPLE_EXPRESSION>"],
+	"T_ASSIGNMENT": ["<T_IDENTIFIER>", "<T_OPERATOR_ASSIGN>", "<T_SIMPLE_EXPRESSION>"],
+	"T_DESTRUCTURING_ASSIGNMENT": ["<T_ARRAY_LITERAL_IDENTIFIER_ONLY>", "<T_ASSIGN>", "<T_SIMPLE_EXPRESSION>"],
+	"T_ARRAY_LITERAL_IDENTIFIER_ONLY": ["<T_ARRAY_START>", {"+": [{"?": [{"|": ["<T_IDENTIFIER>", "<T_ARRAY_LITERAL_IDENTIFIER_ONLY>"]}]}, "<T_COMMA>", {"?": [{"|": ["<T_IDENTIFIER>", "<T_ARRAY_LITERAL_IDENTIFIER_ONLY>"]}]}]}, "<T_ARRAY_END>"],
+	"T_RETURN": ["<T_KEY_RETURN>", "<T_SIMPLE_EXPRESSION>"],
 	"T_FNCALL": {"|": ["<T_FNDOCALL>", "<T_FNPLAINCALL>", "<T_FN_CHAINCALL>"]},
-	"T_FNDOCALL": ["do\\\\s+", "<T_FNNAME>"],
-	"T_FNCSCALL": ["(new\\\\s+)?", "<T_FNNAME>", "[ ]+", "<T_FN_PARAMETERS1>"],
-	"T_FNPLAINCALL": ["(new\\\\s+)?", "<T_FNNAME>", "\\\\s*\\\\(\\\\s*", "<T_FN_PARAMETERS>", "\\\\s*\\\\)"],
-	"T_FN_CHAINCALL": ["<T_CHAIN_EXPRESSION>", "\\\\s*->", {"*": ["<T_FNNAME>", "\\\\s*\\\\(\\\\s*", "<T_FN_PARAMETERS>", "\\\\s*\\\\)\\\\s*->"]}, {"|": ["<T_FNCSCALL>", "<T_FNPLAINCALL>"]}],
-	"T_FN_PARAMETERS1": ["<T_SIMPLE_EXPRESSION>", {"*": ["\\\\s*,\\\\s*", "<T_SIMPLE_EXPRESSION>"]}],
-	"T_FN_PARAMETERS": {"?": ["<T_SIMPLE_EXPRESSION>", {"*": ["\\\\s*,\\\\s*", "<T_SIMPLE_EXPRESSION>"]}]},
-	"T_CONST_DEF": ["<T_CONST>", "\\\\s*=\\\\s*", "<T_SIMPLE_EXPRESSION>"],
+	"T_FNDOCALL": ["<T_KEY_DO>", "<T_IDENTIFIER_NAME>"],
+	"T_FNCSCALL": [{"?": "<T_KEY_ONEW>"}, "<T_IDENTIFIER_NAME>", "<T_WHITESPACE>", "<T_FN_PARAMETERS1>"],
+	"T_FNPLAINCALL": [{"?": "<T_KEY_ONEW>"}, "<T_IDENTIFIER_NAME>", "<T_RBRACKET_OPEN>", "<T_FN_PARAMETERS>", "<T_RBRACKET_CLOSE>"],
+	"T_FN_CHAINCALL": ["<T_CHAIN_EXPRESSION>", "<T_CHAIN_OPERATOR>", {"*": ["<T_IDENTIFIER_NAME>", "<T_RBRACKET_OPEN>", "<T_FN_PARAMETERS>", "<T_RBRACKET_CLOSE>", "<T_CHAIN_OPERATOR>"]}, {"|": ["<T_FNCSCALL>", "<T_FNPLAINCALL>"]}],
+	"T_FN_PARAMETERS1": ["<T_SIMPLE_EXPRESSION>", {"*": ["<T_COMMA>", "<T_SIMPLE_EXPRESSION>"]}],
+	"T_FN_PARAMETERS": {"?": ["<T_SIMPLE_EXPRESSION>", {"*": ["<T_COMMA>", "<T_SIMPLE_EXPRESSION>"]}]},
+	"T_CONST_DEF": ["<T_CONST>", "<T_ASSIGN>", "<T_SIMPLE_EXPRESSION>"],
 	"T_CONST": ["!", "<T_UPPERCASE_IDENTIFIER>"],
 	"T_LOOP": {"|": ["<T_FOR_LOOP>", "<T_FOR_COUNT_UP_LOOP>", "<T_FOR_COUNT_DOWN_LOOP>", "<T_WHILE>"]},
-	"T_FOR_COUNT_UP_LOOP": ["for\\\\s+", "<T_IDENTIFIER>", "\\\\s+in\\\\s+", "<T_CONDITION_EXPRESSION>", "\\\\s*to\\\\s+", "<T_CONDITION_EXPRESSION>", {"?": ["\\\\s+step\\\\s+", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
-	"T_FOR_COUNT_DOWN_LOOP": ["for\\\\s+", "<T_IDENTIFIER>", "\\\\s+in\\\\s+", "<T_CONDITION_EXPRESSION>", "\\\\s*downto\\\\s+", "<T_CONDITION_EXPRESSION>", {"?": ["\\\\s+step\\\\s+", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
-	"T_FOR_LOOP": ["for\\\\s+", "<T_IDENTIFIER>", {"?": [", ", "<T_IDENTIFIER>"]}, "\\\\s+in\\\\s+", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>"],
-	"T_FNNAME": "(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|new\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[A-Za-z][_a-zA-Z0-9.]*",
-	"T_IF": ["if\\\\s+", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>", {"*": ["<T_ELIF>"]}, {"?": ["<T_ELSE>"]}],
-	"T_ELSE": ["\\\\s*else[ ]*", "<T_INDENTED_EXPRESSIONS>"],
-	"T_ELIF": ["\\\\s+elif\\\\s+", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
-	"T_IF_THEN": ["if\\\\s+", "<T_PCONDITION>", "\\\\s+then\\\\s+", "<T_SIMPLE_EXPRESSION>", {"?": ["\\\\s+else\\\\s+", "<T_SIMPLE_EXPRESSION>"]}],
-	"T_PCONDITION": {"|": [["\\\\s*\\\\(\\\\s*", "<T_CONDITION>", "\\\\s*\\\\)"], "<T_CONDITION>"]},
+	"T_FOR_COUNT_UP_LOOP": ["<T_KEY_FOR>", "<T_IDENTIFIER>", "<T_KEY_IN>", "<T_CONDITION_EXPRESSION>", "<T_KEY_TO>", "<T_CONDITION_EXPRESSION>", {"?": ["<T_KEY_STEP>", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
+	"T_FOR_COUNT_DOWN_LOOP": ["<T_KEY_FOR>", "<T_IDENTIFIER>", "<T_KEY_IN>", "<T_CONDITION_EXPRESSION>", "<T_KEY_DOWNTO>", "<T_CONDITION_EXPRESSION>", {"?": ["<T_KEY_STEP>", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
+	"T_FOR_LOOP": ["<T_KEY_FOR>", "<T_IDENTIFIER>", {"?": ["<T_COMMA>", "<T_IDENTIFIER>"]}, "<T_KEY_IN>", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>"],
+	"T_IF": ["<T_KEY_IF>", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>", {"*": ["<T_ELIF>"]}, {"?": ["<T_ELSE>"]}],
+	"T_ELSE": ["<T_KEY_ELSE>", "<T_INDENTED_EXPRESSIONS>"],
+	"T_ELIF": ["<T_KEY_ELSEIF>", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
+	"T_IF_THEN": ["<T_KEY_IF>", "<T_PCONDITION>", "<T_KEY_THEN>", "<T_SIMPLE_EXPRESSION>", {"?": ["<T_KEY_ELSE>", "<T_SIMPLE_EXPRESSION>"]}],
+	"T_PCONDITION": {"|": ["<T_CONDITION>", ["<T_RBRACKET_OPEN>", "<T_CONDITION>", "<T_RBRACKET_CLOSE>"]]},
 	"T_CONDITION": ["<T_CONDITION_PART>", {"*": ["<T_BOOL_OP>", "<T_CONDITION_PART>"]}],
 	"T_CONDITION_PART": {"|": ["<T_PCOMPARISON>", [{"?": ["<T_BOOL_NEGATION>"]}, {"|": ["<T_EMPTY>", "<T_EXISTS>", "<T_SIMPLE_EXPRESSION>"]}]]},
-	"T_EMPTY": [{"|": ["<T_CONST>", "<T_CHAIN_EXPRESSION>"]}, "\\\\?\\\\?"],
-	"T_EXISTS": [{"|": ["<T_IDENTIFIER>", "<T_CONST>"]}, "\\\\?"],
-	"T_WHILE": ["while\\\\s+", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
-	"T_PCOMPARISON": {"|": [["\\\\s*\\\\(\\\\s*", "<T_COMPARISON>", "\\\\s*\\\\)"], "<T_COMPARISON>"]},
+	"T_EMPTY": [{"|": ["<T_CONST>", "<T_CHAIN_EXPRESSION>"]}, "<T_EMPTY_OPERATOR>"],
+	"T_EXISTS": [{"|": ["<T_IDENTIFIER>", "<T_CONST>"]}, "<T_EXISTS_OPERATOR>"],
+	"T_WHILE": ["<T_KEY_WHILE>", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
+	"T_KEY_CLASSTREE": "\\\\s+(extends|implements)\\\\s+",
+	"T_KEY_CLASS": "class\\\\s+",
+	"T_KEY_ATTRVISIBILITY": "(static|public|private|protected)\\\\s+",
+	"T_KEY_TRY": "try[ ]*",
+	"T_KEY_CATCH": "catch[ ]+",
+	"T_KEY_FINALLY": "finally[ ]*",
+	"T_KEY_FN": "fn\\\\s+",
+	"T_KEY_RETURN": "[ ]*<-\\\\s*",
+	"T_KEY_DO": "do\\\\s+",
+	"T_KEY_ONEW": "(new\\\\s+)",
+	"T_KEY_STEP": "\\\\s+step\\\\s+",
+	"T_KEY_TO": "\\\\s*to\\\\s+",
+	"T_KEY_DOWNTO": "\\\\s*downto\\\\s+",
+	"T_KEY_IN": "\\\\s+in\\\\s+",
+	"T_KEY_FOR": "for\\\\s+",
+	"T_KEY_WHILE": "while\\\\s+",
+	"T_KEY_IF": "if\\\\s+",
+	"T_KEY_THEN": "\\\\s+then\\\\s+",
+	"T_KEY_ELSEIF": "\\\\s+el(?:se[ ]*)?if\\\\s+",
+	"T_KEY_ELSE": "\\\\s+else[ ]*",
+	"T_WHITESPACE": "[ ]+",
+	"T_EMPTY_OPERATOR": "\\\\?\\\\?",
+	"T_EXISTS_OPERATOR": "\\\\?",
+	"T_CHAIN_OPERATOR": "\\\\s*->",
+	"T_PCOMPARISON": {"|": [["<T_RBRACKET_OPEN>", "<T_COMPARISON>", "<T_RBRACKET_CLOSE>"], "<T_COMPARISON>"]},
 	"T_COMPARISON": {"|": ["<T_EQUALS_COMPARISON>", "<T_NEQUALS_COMPARISON>", "<T_GT_COMPARISON>", "<T_LT_COMPARISON>"]},
-	"T_EQUALS_COMPARISON": ["<T_CONDITION_EXPRESSION>", "\\\\s+(is|==)\\\\s+", "<T_CONDITION_EXPRESSION>"],
-	"T_NEQUALS_COMPARISON": ["<T_CONDITION_EXPRESSION>", "\\\\s+(isnt|!=)\\\\s+", "<T_CONDITION_EXPRESSION>"],
-	"T_GT_COMPARISON": ["<T_CONDITION_EXPRESSION>", {"|": ["\\\\s*>(=?)\\\\s*"]}, "<T_CONDITION_EXPRESSION>"],
-	"T_LT_COMPARISON": ["<T_CONDITION_EXPRESSION>", {"|": ["\\\\s*<(=?)\\\\s*"]}, "<T_CONDITION_EXPRESSION>"],
-	"T_PARAMETERS": ["<T_PARAMETER>", {"*": ["\\\\s*,\\\\s*", "<T_PARAMETER>"]}],
-	"T_PARAMETER": ["<T_IDENTIFIER>", {"?": ["\\\\s*=\\\\s*", "<T_LITERAL>"]}],
+	"T_EQUALS_COMPARISON": ["<T_CONDITION_EXPRESSION>", "<T_EQ_OPERATOR>", "<T_CONDITION_EXPRESSION>"],
+	"T_NEQUALS_COMPARISON": ["<T_CONDITION_EXPRESSION>", "<T_NEQ_OPERATOR>", "<T_CONDITION_EXPRESSION>"],
+	"T_GT_COMPARISON": ["<T_CONDITION_EXPRESSION>", "<T_GTE_OPERATOR>", "<T_CONDITION_EXPRESSION>"],
+	"T_LT_COMPARISON": ["<T_CONDITION_EXPRESSION>", "<T_LTE_OPERATOR>", "<T_CONDITION_EXPRESSION>"],
+	"T_EQ_OPERATOR": "\\\\s+(is|==)\\\\s+",
+	"T_NEQ_OPERATOR": "\\\\s+(isnt|!=)\\\\s+",
+	"T_GTE_OPERATOR": "\\\\s*>(=?)\\\\s*",
+	"T_LTE_OPERATOR": "\\\\s*<(=?)\\\\s*",
+	"T_INCDEC_OPERATOR": "\\\\s*(\\\\+\\\\+)|(--)",
+	"T_PARAMETERS": ["<T_PARAMETER>", {"*": ["<T_COMMA>", "<T_PARAMETER>"]}],
+	"T_PARAMETER": ["<T_IDENTIFIER>", {"?": ["<T_ASSIGN>", "<T_LITERAL>"]}],
 	"T_LITERAL": {"|": ["<T_REGEXP_LITERAL>", "<T_ARRAY_LITERAL>", "<T_BOOLEAN_LITERAL>", "<T_NULL>", "<T_STRING_LITERAL>", "<T_NUMBER_LITERAL>"]},
-	"T_ARRAY_LITERAL": ["\\\\s*\\\\[\\\\s*", {"*": [{"|": ["<T_KEYVALUE_PAIR>", "<T_CONDITION_EXPRESSION>"]}, "\\\\s*[,]?\\\\s*"]}, "\\\\s*\\\\]"],
-	"T_KEYVALUE_PAIR": ["<T_LITERAL>", "\\\\s*:\\\\s*", "<T_CONDITION_EXPRESSION>"],
+	"T_ARRAY_LITERAL": ["<T_ARRAY_START>", {"?": [{"|": ["<T_KEYVALUE_PAIR>", "<T_CONDITION_EXPRESSION>"]}, {"*": ["<T_COMMA>", {"|": ["<T_KEYVALUE_PAIR>", "<T_CONDITION_EXPRESSION>"]}]}]}, {"?": "<T_COMMA>"}, "<T_ARRAY_END>"],
+	"T_KEYVALUE_PAIR": ["<T_LITERAL>", "<T_COLON>", "<T_CONDITION_EXPRESSION>"],
 	"T_STRING_LITERAL": {"|": ["<T_STRING_LITERAL_UQUOTE>", "<T_STRING_LITERAL_TQUOTE>", "<T_STRING_LITERAL_DQUOTE>"]},
-	"T_IDENTIFIER": ["(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)", {"*": ["\\\\[", "<T_CONDITION_EXPRESSION>", {"?": ["\\\\s*\\\\.\\\\.\\\\.\\\\s*", "<T_CONDITION_EXPRESSION>"]}, "\\\\]"]}],
+	"T_IDENTIFIER": ["<T_IDENTIFIER_NAME>", {"*": ["<T_ARRAY_START>", "<T_CONDITION_EXPRESSION>", {"?": ["<T_ARRAY_RANGE>", "<T_CONDITION_EXPRESSION>"]}, "<T_ARRAY_END>"]}],
+	"T_ARRAY_START": "[ \\\\t]*\\\\[\\\\s*",
+	"T_OPERATOR_ASSIGN": "\\\\s*[\\\\+\\\\-\\\\*/\\\\%]?=\\\\s*",
+	"T_ASSIGN": "\\\\s*=\\\\s*",
+	"T_ARRAY_END": "\\\\s*\\\\]",
+	"T_COLON": "\\\\s*:\\\\s*",
+	"T_COMMA": "\\\\s*,\\\\s*",
+	"T_ARRAY_RANGE": "\\\\s*\\\\.\\\\.\\\\.\\\\s*",
+	"T_IDENTIFIER_NAME": "(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)",
 	"T_UPPERCASE_IDENTIFIER": "_*[A-Z_]+",
 	"T_CLASS_IDENTIFIER": "_*[A-Z][a-zA-Z0-9]*",
+	"T_RBRACKET_OPEN": "[ ]*\\\\(\\\\s*",
+	"T_RBRACKET_CLOSE": "\\\\s*\\\\)",
 	"T_OPERATION": {"|": ["<T_COMPLEX_OPERATION>", "<T_COMPLEX_STRING_OPERATION>", "<T_INCDEC>"]},
-	"T_COMPLEX_OPERATION": [{"|": ["<T_FNCALL>", "<T_NUMBER_LITERAL>", "<T_IDENTIFIER>"]}, {"+": ["<T_OPERATOR>", {"|": ["<T_FNCALL>", "<T_NUMBER_LITERAL>", "<T_IDENTIFIER>"]}]}],
-	"T_COMPLEX_STRING_OPERATION": [{"|": ["<T_FNCALL>", "<T_STRING_LITERAL>", "<T_IDENTIFIER>"]}, {"+": ["\\\\s*[\\\\+%&]\\\\s*", {"|": ["<T_FNCALL>", "<T_STRING_LITERAL>", "<T_IDENTIFIER>"]}]}],
+	"T_COMPLEX_OPERATION": ["<T_COMPLEX_OPERAND>", {"+": "<T_COMPLEX_OPERATION_ADD>"}],
+	"T_COMPLEX_OPERAND": {"|": ["<T_FNCALL>", "<T_NUMBER_LITERAL>", "<T_IDENTIFIER>", "<T_COMPLEX_POPERAND>"]},
+	"T_COMPLEX_POPERAND": ["<T_RBRACKET_OPEN>", {"|": ["<T_COMPLEX_OPERATION>", "<T_COMPLEX_OPERAND>"]}, "<T_RBRACKET_CLOSE>"],
+	"T_COMPLEX_OPERATION_ADD": [{"|": ["<T_OPERATOR>", "<T_MODULO>"]}, {"|": ["<T_COMPLEX_OPERATION>", "<T_COMPLEX_OPERAND>"]}],
+	"T_COMPLEX_STRING_OPERATION": [{"|": ["<T_FNCALL>", "<T_STRING_LITERAL>", "<T_IDENTIFIER>"]}, {"+": "<T_COMPLEX_STRING_OPERATION_ADD>"}],
+	"T_COMPLEX_STRING_OPERATION_ADD": ["<T_STRING_CONCAT>", {"|": ["<T_FNCALL>", "<T_STRING_LITERAL>", "<T_IDENTIFIER>"]}],
+	"T_MODULO": "\\\\s+mod\\\\s+",
+	"T_STRING_CONCAT": "\\\\s*[\\\\+%&]\\\\s*",
 	"T_OPERATOR": "\\\\s*[\\\\-\\\\+\\\\*/]\\\\s*",
 	"T_STRING_LITERAL_UQUOTE": "\'([^\']*)\'",
 	"T_STRING_LITERAL_DQUOTE": "\\"([^\\"]*)\\"",
@@ -83,7 +157,7 @@ class SnowCompiler {
 	"T_FLOAT_NUMBER": "(-?[0-9]*\\\\.[0-9]+)",
 	"T_DEC_NUMBER": "(-?[0-9]+)",
 	"T_REGEXP_LITERAL": "/([^/]+)/[imsxADSUXJu]*",
-	"T_NEWLINE": "[ \\t]*[\\r\\n]+|\\\\s*$"
+	"T_NEWLINE": "((?:[ \\\\t]*;)?[ \\\\t]*[\\r\\n])+|\\\\s*$"
 }';
 	protected $mapRules = '';
 # ${c} - special command: create recursive chain
@@ -91,6 +165,8 @@ class SnowCompiler {
 # ${\x?a/b} - if \x is not empty, replace this expression with a, else with b (either one can be left empty)
 # ${R\x/a/b} - replace a in \x with b
 # ${E\x/a/b} - evaluate/compile everything from \x that is in the first match group of a and replace it with b
+# ${I} - add current indentation here
+# ${I-1} - add previous indentation here
 	protected $language = null;
 	protected $mapping = null;
 	protected $code = null;
@@ -98,26 +174,33 @@ class SnowCompiler {
 	protected $successStack = null;
 	protected $indentationLevel = 0;
 	protected $maxMatch = null;
+	protected $lastPos = 0;
 
 	function __construct($code, $complete = true) {
 		$this->mapRules = '{
-	"T_IF": "if (\\\\2) {\\\\3;\\n}\\\\4\\\\5\\n",
-	"T_NEWLINE": ";\\n",
-	"T_TRY_CATCH": "try {\\\\2;\\n} catch (Exception \\\\5) {'.(PHP_VERSION_ID >= 50500 ? '' : '\\n\\t$catchGuard = true\\\\7.3').'\\\\6;\\n}'.(PHP_VERSION_ID >= 50500 ? '${\\\\7.3? finally {\\\\7.3;\\n}/}' : '\\nif(!isset($catchGuard)) {\\\\7.3;\\n} else {\\n\\tunset($catchGuard);\\n}\\n').'",
-	"T_CLASS": "class \\\\2\\\\3 {\\\\4\\n}",
+	"T_NEWLINE": "\\n",
+	"T_IF": "if (\\\\2) {\\\\3\\n${I-1}}\\\\4\\\\5\\n",
+	"T_EXPRESSION": "\\\\1\\\\2\\\\3\\\\4\\\\5\\\\6\\\\7\\\\8\\\\9;",
+	"T_TRY_CATCH": "try {\\\\2\\n${I-1}} catch (Exception \\\\5) {'.(PHP_VERSION_ID >= 50500 ? '' : '\\n${I}$catchGuard = true\\\\7.3').'\\\\6\\n${I-1}}'.(PHP_VERSION_ID >= 50500 ? '${\\\\7.3? finally {\\\\7.3\\n${I-1}}/}' : '\\nif(!isset($catchGuard)) {\\\\7.3\\n${I-1}} else {\\n${I}unset($catchGuard);\\n${I-1}}\\n').'",
+	"T_CLASS": "class \\\\2\\\\3 {\\\\4\\n${I-2}}",
 	"T_CLASS_FN_DEF": "\\\\1\\\\2",
+	"T_CLASS_VAR_DEF": "\\\\1\\\\2;",
+	"T_CLASS_CONST_DEF": "const \\\\1\\\\2\\\\3;",
 	"T_MULTILINE_COMMENT": "/*${R\\\\1/#/}*/",
 	"T_SINGLELINE_COMMENT": "//${R\\\\1/#/}",
 	"T_BOOL_AND": " && ",
+	"T_MODULO": " % ",
 	"T_BOOL_OR": " || ",
 	"T_BOOL_NEGATION": "!",
 	"T_INCDEC": "\\\\1\\\\2",
 	"T_LOOP_CONTROL": "\\\\1",
 	"T_COMPLEX_OPERATION": "\\\\1\\\\2",
-	"T_COMPLEX_STRING_OPERATION": "\\\\1 . \\\\2.2",
+	"T_COMPLEX_OPERATION_ADD": "\\\\1\\\\2",
+	"T_COMPLEX_STRING_OPERATION": "\\\\1\\\\2",
+	"T_COMPLEX_STRING_OPERATION_ADD": " . \\\\2",
 	"T_EXISTS": "${\\\\1.2?defined(\'\\\\1\')/isset(\\\\1)}",
 	"T_EMPTY": "(${\\\\1.1?defined(\'\\\\1\') && strlen(\\\\1) > 0/(($_tmp1 = (\\\\1)) || true) && isset($_tmp1) && !empty($_tmp1) && (($_tmp1 = null) || true) || ($_tmp1 = null)})",
-	"T_FN_DEF": "function \\\\2(\\\\3.2) {\\\\4;}",
+	"T_FN_DEF": "function \\\\2(\\\\3.2) {\\\\4\\n${I-1}}",
 	"T_EQUALS_COMPARISON": "\\\\1 === \\\\3",
 	"T_NEQUALS_COMPARISON": "\\\\1 !== \\\\3",
 	"T_GT_COMPARISON": "(gettype($_tmp1 = \\\\1) === gettype($_tmp2 = \\\\3) && ($_tmp1 \\\\2 $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))",
@@ -125,20 +208,20 @@ class SnowCompiler {
 	"T_IDENTIFIER": "${\\\\2.3?array_slice(/}${\\\\1~=(^(true|false|null)$)|\\\\.\\\\.?/$}${R\\\\1/\\\\.\\\\./::$}${R\\\\1/@(.+)/this->\\\\1}${R\\\\1/\\\\./->}${\\\\2.3?, $_tmp3 = (\\\\2.2), (\\\\2.3.2) - $_tmp3 + 1)/\\\\2}",
 	"T_CONST_DEF": "define(\\"\\\\1\\", \\\\3)",
 	"T_CONST": "\\\\2",
-	"T_ELSE": " else {\\\\2;\\n}",
-	"T_ELIF": " else if (\\\\2) {\\\\3;\\n}",
-	"T_FOR_LOOP": "foreach (\\\\5 as ${\\\\3.2?\\\\3.2 => /}\\\\2) {\\\\6;\\n}\\nunset(\\\\2${\\\\3.2?, \\\\3.2/});\\n",
-	"T_FOR_COUNT_UP_LOOP": "for (\\\\2 = \\\\4; \\\\2 <= \\\\6; \\\\2 += ${\\\\7.2?\\\\7.2/1}) {\\\\8;\\n}\\nunset(\\\\2);\\n",
-	"T_FOR_COUNT_DOWN_LOOP": "for (\\\\2 = \\\\4; \\\\2 >= \\\\6; \\\\2 -= ${\\\\7.2?\\\\7.2/1}) {\\\\8;\\n}\\nunset(\\\\2);\\n",
+	"T_ELSE": " else {\\\\2\\n${I-1}}",
+	"T_ELIF": " else if (\\\\2) {\\\\3\\n${I-1}}",
+	"T_FOR_LOOP": "foreach (\\\\5 as ${\\\\3.2?\\\\3.2 => /}\\\\2) {\\\\6\\n${I-1}}\\n${I-1}unset(\\\\2${\\\\3.2?, \\\\3.2/});\\n",
+	"T_FOR_COUNT_UP_LOOP": "for (\\\\2 = \\\\4; \\\\2 <= \\\\6; \\\\2 += ${\\\\7.2?\\\\7.2/1}) {\\\\8;\\n${I-1}}\\n${I-1}unset(\\\\2);\\n",
+	"T_FOR_COUNT_DOWN_LOOP": "for (\\\\2 = \\\\4; \\\\2 >= \\\\6; \\\\2 -= ${\\\\7.2?\\\\7.2/1}) {\\\\8;\\n${I-1}}\\n${I-1}unset(\\\\2);\\n",
 	"T_IF_THEN": "(\\\\2 ? \\\\4 : ${\\\\5.2?\\\\5.2/null})",
 	"T_ARRAY_LITERAL": "Array(\\\\2)",
 	"T_KEYVALUE_PAIR": "\\\\1 => \\\\3",
 	"T_NUMBER_LITERAL": "\\\\1",
 	"T_BOOLEAN_LITERAL": "\\\\1",
 	"T_REGEXP_LITERAL": "\'${R\\\\1/\'/\\\\\'}\'",
-	"T_WHILE": "while (\\\\2) {\\\\3;}\\n",
+	"T_WHILE": "while (\\\\2) {\\\\3;\\n${I-1}}\\n",
 	"T_FNPLAINCALL": "\\\\1${R\\\\2/^@/$this->}${R\\\\2/^(\\\\w+)\\\\.\\\\./\\\\1::}${R\\\\2/^(\\\\w+)\\\\./$\\\\1->}${R\\\\2/(\\\\w+)\\\\./\\\\1->}(\\\\4)",
-	"T_FNCSCALL": "\\\\1${R\\\\2/^@/$this->}${R\\\\2/^(\\\\w+)\\\\.\\\\./\\\\2::}${R\\\\2/^(\\\\w+)\\\\./$\\\\1->}${R\\\\2/(\\\\w+)\\\\./\\\\1->}(\\\\4)",
+	"T_FNCSCALL": "\\\\1${R\\\\2/^@/$this->}${R\\\\2/^(\\\\w+)\\\\.\\\\./\\\\1::}${R\\\\2/^(\\\\w+)\\\\./$\\\\1->}${R\\\\2/(\\\\w+)\\\\./\\\\1->}(\\\\4)",
 	"T_FNDOCALL": "${R\\\\2/^@/$this->}${R\\\\2/^(\\\\w+)\\\\.\\\\./\\\\1::}${R\\\\2/^(\\\\w+)\\\\./$\\\\1->}${R\\\\2/(\\\\w+)\\\\./\\\\1->}();\\n",
 	"T_ASSIGNMENT": "\\\\1 \\\\2 \\\\3",
 	"T_RETURN": "return \\\\2;\\n",
@@ -152,32 +235,95 @@ class SnowCompiler {
 		$this->language = json_decode($this->ebnf, true);
 		$this->mapping = json_decode($this->mapRules, true);
 		$this->code = trim($code) . ($complete ? "\nnull" : "");
+		$this->startWith = ($complete ? "T_EXPRESSIONS" : "T_SIMPLE_EXPRESSION");
 		$this->stack = Array();
 		$this->indentationLevel = 0;
 		$this->successStack = Array();
+		$this->lineOffset = Array();
 		$this->maxMatch = Array(0, null);
+
+		$this->prepareCode();
+	}
+
+	function prepareCode() {
+		$lines = explode("\n", $this->code);
+		$prevDepth = 0;
+		$inNoCompile = false;
+		foreach ($lines as $id => $line) {
+			$hasIndent = preg_match('/^' . $this->language["T_INDENT"] . '/', $line, $indent);
+
+			// ignore indentation changes in multiline strings and comments
+			$types = Array('"""', "'", '"', '###');
+			$continue = false;
+			foreach ($types as $type) {
+				preg_match_all('/' . $type . '/', $line, $matches);
+				if (count($matches[0]) % 2 == 1) {
+					if (!$inNoCompile) {
+						$inNoCompile = $type;
+					} else if ($inNoCompile == $type) {
+						$inNoCompile = false;
+						$continue = true;
+						break;
+					}
+				}
+			}
+			// if empty line
+			if (preg_match('/^\\s*$/', $line) || $inNoCompile || $continue) {
+				continue;
+			}
+			if ($indent[1] == "\t") {
+				$depth = strlen($indent[0]);
+			} else {
+				$depth = strlen($indent[0]) / 4;
+			}
+			if ($depth < $prevDepth - 1) {
+				// do a look-ahead and check if the next non-empty line starts with "else"
+				$c = 1;
+				$ignore = false;
+				while (1) {
+					if (preg_match('/^\s*else\b/', $lines[$id + $c]) !== false) {
+						$ignore = true;
+						break;
+					}
+					if (preg_match('/^\\s*$/', $lines[$id + $c]) === false) {
+						break;
+					}
+					$c++;
+				}
+				$this->lineOffset[$id + ($prevDepth - $depth) + 1] = 0;
+				for ($i = 1; $i <= $prevDepth - $depth; $i++) {
+					if (!$ignore || $i != ($prevDepth - $depth)) {
+						$this->lineOffset[$id + ($prevDepth - $depth) + 1]++;
+						$lines[$id - 1] .= "\n" . str_repeat("\t", $prevDepth - $i) . "null";
+					}
+				}
+			}
+			$prevDepth = $depth;
+		}
+		$this->code = implode("\n", $lines);
 	}
 
 	function compile($debug = false) {
 		$result = "";
-		if ($tree = $this->checkRuleByName("T_EXPRESSIONS", 0, $debug)) {
+		if (empty($this->code) || $this->code === "\nnull") return "";
+		if ($tree = $this->checkRuleByName($this->startWith, 0, $debug)) {
 			if ($tree["len"] < strlen($this->code)) {
 				$lines = explode("\n", $this->code);
-				$line = count(explode("\n", substr($this->code, $tree["len"])));
+				$line = count(explode("\n", substr($this->code, 0, $this->lastPos/*$tree["len"]*/)));
 				if ($this->maxMatch[2] > 0) {
 					$lines = explode("\n", substr($this->code, 0, $this->maxMatch['error']));
 					$line = count($lines);
 					$pre = array_pop($lines);
 					$post = array_shift(explode("\n", substr($this->code, $this->maxMatch['error'])));
 					$nl = str_repeat("-", strlen($pre)) . "^";
-					throw new Exception("Unexpected character while trying to parse ".$this->maxMatch[1]." at line ".($line).": \n" . $pre . $post . "\n" . $nl);
+					throw new Exception("Unexpected character while trying to parse ".$this->maxMatch[1]." at line ".($line - intval($this->lineOffset[$line])).": \n" . $pre . $post . "\n" . $nl);
 				}
-				throw new Exception("Error at line ".($line)." while parsing input: \"".$lines[$line - 1]."\"");
+				throw new Exception("Error at line ".($line - intval($this->lineOffset[$line]))." while parsing input: \"".$lines[$line - 1]."\"");
 			}
 			$result = $this->doMapping($tree);
 			unset($tree);
 		} else {
-			throw new Exception("Unable to parse input: given input is no T_EXPRESSIONS.");
+			throw new Exception("Unable to parse input: given input is no T_EXPRESSIONS:\n".$this->code);
 		}
 
 		return $result;
@@ -195,7 +341,7 @@ class SnowCompiler {
 			$c = count($chain) - 5;
 			$slice = array_splice($chain, $c < 0 ? 0 : $c, 5);
 
-			if ($slice[0]["T_FNNAME"]) {
+			if ($slice[0]["T_IDENTIFIER_NAME"]) {
 				$offset1 = $offset2 = 0;
 			}
 		}
@@ -234,6 +380,18 @@ class SnowCompiler {
 			$val = $this->getValue($tree, intval($parts[$i]) - 1);
 			$replacements[0][$matches[0][$key]] = $val;
 			$tree = $oldValue;
+		}
+
+		preg_match_all('/\\$\\{I(-[0-9]+)?\\}/m', $template, $indentMatches);
+		foreach ($indentMatches[0] as $key => $match) {
+			$indent = $tree["indent"];
+			if ($indentMatches[1][$key][0] == "-") {
+				$indent = $tree["indent"] - (-1 * $indentMatches[1][$key]);
+			}
+			if ($indent > 0)
+				$replacements[0][$match] = str_repeat("\t", $indent);
+			else 
+				$replacements[0][$match] = "";
 		}
 
 		preg_match_all('/\\$\\{\\\\([1-9][0-9.]*)(~=[^\\?]+)?\\?([^\\/]*)\\/([^}]*)\\}/m', $template, $ifMatches);
@@ -336,35 +494,54 @@ class SnowCompiler {
 
 	function checkRuleByName($ruleName, $pos = 0, $debug = false, $depth = 0) {
 		if ($rule = $this->language[$ruleName]) {
+			if ($debug) echo str_repeat(" ", $depth) . "Checking rule $ruleName at $pos\n";
 			if (is_array($this->stack[$pos]) && in_array($ruleName, $this->stack[$pos])) {
 				return false;
 			}
 			if ($this->successStack[$pos][0] == $ruleName) return $this->successStack[$pos][1];
-			if ($debug) echo str_repeat("\t", $depth)."checking rule ".$ruleName." at pos ".$pos."\n";
 			$this->stack[$pos][] = $ruleName;
-#	 		if ($debug) var_dump($this->stack);
  			$result = $this->checkRule($rule, $pos, (gettype($debug) != "string" ? $debug : false) || ($ruleName == (gettype($debug) == "string" ? $debug : "")), $depth);
 			if ($ruleName === 'T_INDENT') {
 				$cline = substr($this->code, $pos, strpos($this->code, "\n", $pos) - $pos);
-				preg_match_all("/(\\s{4}|\t)/", $cline, $matches);
-				if ($debug) echo str_repeat("\t", $depth)."line: ".$cline.";indent matches: ".json_encode($matches)."; indent level: ".$this->indentationLevel."\n";
-				$indentDepth = count($matches[1]);
+				preg_match_all("/([ ]{4}|[\t])/", $cline, $matches);
+				if ($matches[1][0][0] == "\t" && !is_array($matches[1])) {
+					if (preg_match("/^\t+([ ]{4})+\t*/", $cline)) {
+						$lines = explode("\n", substr($this->code, 0, $pos));
+						$line = count($lines);
+						throw new Exception("Mixed spaces with tabs used for indentation in line $line. Please fix.");
+					}
+					$indentDepth = strlen($matches[1][0]);
+				} else {
+					if (preg_match("/(?:^\t+[ ]{4})|(?:^[ ]{4}\t+)/", $cline)) {
+						$lines = explode("\n", substr($this->code, 0, $pos));
+						$line = count($lines);
+						throw new Exception("Mixed spaces with tabs used for indentation in line $line. Please fix.");
+					}
+					$indentDepth = count($matches[1]);
+				}				
 				if ($indentDepth < $this->indentationLevel) {
 					$this->stack[$pos] = array_diff($this->stack[$pos], Array($ruleName));
+					#echo "moving out " . abs($indentDepth - $this->indentationLevel) . " levels.\n";
 					$result = false;
 				}
 				$this->indentationLevel = $indentDepth;
 			}
 			if ($result != false) {
 				$res = Array();
-				if ($debug) echo str_repeat("\t", $depth)."Success for rule ".$ruleName." at pos ".$pos."\n";
 				$res[$ruleName] = $result;
 				$res["len"] = $result["len"];
-				unset($result['len']);
-				$this->successStack[$pos] = Array($ruleName, $res);
+				$res["indent"] = $result["indent"];
+				unset($result['len'], $result['indent']);
+				if ($debug) {
+					echo str_repeat(" ", $depth) . "Matched rule $ruleName at $pos <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) . "\n";
+				}
+				$this->successStack[$pos] = Array($ruleName, $res, $indentationLevel);
 				$this->stack[$pos] = array_diff($this->stack[$pos], Array($ruleName));
 			} else {
-				if ($debug) echo str_repeat("\t", $depth)."Rule ".$ruleName." does not apply at pos ".$pos."\n";
+				$this->lastPos = $pos;
+				if ($debug) {
+					echo str_repeat(" ", $depth) . "Failed rule $ruleName at $pos <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) . "\n";
+				}
 				if ($this->maxMatch['dirty']) {
 					$this->maxMatch['dirty'] = false;
 					$this->maxMatch[1] = $ruleName;
@@ -383,13 +560,12 @@ class SnowCompiler {
 				return $this->checkRuleByName($matches[1], $pos, $debug, $depth + 1);
 			} else {
 				# found base rule
-				if ($debug) echo str_repeat("\t", $depth)."found base rule ".$rule."\n";
-				if ($debug) echo str_repeat("\t", $depth)."/^(".$rule.")/ <==> ".substr($this->code, $pos, strpos($this->code, "\n", $pos) - $pos)."\n";
+				$mfrag = substr($this->code, $pos, strpos($this->code, "\n", $pos) - $pos);
 				if (preg_match("`^(".$rule.")`", substr($this->code, $pos), $matches)) {
-					if ($debug) echo str_repeat("\t", $depth)."Success!\n";
-					return Array("match" => $matches[1], "pos" => $pos, "len" => strlen($matches[1]));
+					if ($debug) echo str_repeat(" ", $depth) . "Matched at $pos: base rule $rule <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) ."\n";
+					return Array("match" => $matches[1], "pos" => $pos, "len" => strlen($matches[1]), "indent" => $this->indentationLevel);
 				} else {
-					if ($debug) echo str_repeat("\t", $depth)."Failed!\n";
+					if ($debug) echo str_repeat(" ", $depth) . "Fail at $pos: base rule $rule <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) ."\n";
 					return false;
 				}
 			}
@@ -414,21 +590,20 @@ class SnowCompiler {
 							}
 						} else {
 							foreach ($subRule as $subsubRule) {
-								if ($debug) echo str_repeat("\t", $depth)."| multi rule: ".json_encode($subsubRule)."\n";
 								if ($checkPos >= strlen($this->code)) {
-									if ($debug) echo str_repeat("\t", $depth)."Cancelled | multi rule!\n";
 									$matches = false;
 									break;
 								}
 								$result = $this->checkRule($subsubRule, $checkPos, $debug, $depth + 1);
 								$matches = $matches || $result != false;
 								if ($matches) {
-									if ($debug) echo str_repeat("\t", $depth)."Success | multi rule\n";
 									$resultTree[] = $result;
 									$checkPos += $result["len"];
+									if ($debug) echo str_repeat(" ", $depth). "Modifier $modifier matched for rule " . json_encode($rule) . "\n";
 									break;
 								} else {
 									$resultTree[] = null;
+									if ($debug) echo str_repeat(" ", $depth). "Unmatched modifier $modifier for rule " . json_encode($rule) . "\n";
 								}
 							}
 						}
@@ -438,9 +613,9 @@ class SnowCompiler {
 						$matches = true;
 						$oldCheckPos = $checkPos;
 						$oldResultTree = array_merge($resultTree, Array());
+						$indent = $this->indentationLevel;
 						while ($matches) {
 							if ($checkPos >= strlen($this->code)) {
-								if ($debug) echo str_repeat("\t", $depth)."Cancelled!\n";
 								$matches = false;
 								break;
 							}
@@ -457,25 +632,19 @@ class SnowCompiler {
 								$oldCheckPos = $checkPos;
 								$oldResultTree = $resultTree;
 								foreach ($subRule as $subsubRule) {
-									if ($debug) {
-										echo str_repeat("\t", $depth)."Quantifier multi rule pos ".$checkPos.": ".json_encode($subRule)."\n";
-									}
 									if ($checkPos >= strlen($this->code)) {
 										if (is_array($subsubRule) || $subsubRule != "<T_NEWLINE>") {
 											$matches = false;
 										}
-										if ($debug) echo str_repeat("\t", $depth)."Cancelled quantifier multi rule!\n";
 										break;
 									}
 									$result = $this->checkRule($subsubRule, $checkPos, $debug, $depth + 1);
 									$matches = $matches && $result != false;
 									if ($matches) {
-										if ($debug) echo str_repeat("\t", $depth)."Success quantifier multi rule: ".json_encode($subsubRule)."\n";
 										$checkPos += $result["len"];
 										$resultTree[] = $result;
 									} else {
 										$resultTree[] = null;
-										if ($debug) echo str_repeat("\t", $depth)."Failed quantifier multi rule: ".json_encode($subsubRule)."\n";
 										break;
 									}
 								}
@@ -487,24 +656,31 @@ class SnowCompiler {
 							}
 							if ($matches) $found++;
 						}
-						if ($debug) echo str_repeat("\t", $depth)."Modifier: ".$modifier." (".$found.")\n";
 						if (($found >= 1 && $modifier == "+") || $modifier == "*" || ($found <= 1 && $modifier == "?")) {
-							if ($debug) echo str_repeat("\t", $depth)."Matched modifier conditions.\n";
 							$matches = true;
+							if ($debug) echo str_repeat(" ", $depth). "Modifier $modifier matched for rule " . json_encode($rule) . "\n";
 						} else {
-							$resultTree = $oldResultTree;
-							$checkPos = $oldCheckPos;
-							$matches = false;
+							if ($indent != $this->indentationLevel) {
+								$matches = true;
+								if ($debug) echo str_repeat(" ", $depth). "Modifier $modifier matched but have to jump further up for rule " . json_encode($rule) . "\n";
+								$checkPos -= $result['len'];
+								$resultTree = array_slice($resultTree, 0, -1);
+								unset($found, $oldCheckPos, $oldResultTree);
+								break;
+							} else {
+								$resultTree = $oldResultTree;
+								$checkPos = $oldCheckPos;
+								$matches = false;
+								if ($debug) echo str_repeat(" ", $depth). "Unmatched modifier $modifier (found $found times) for rule " . json_encode($rule) . "\n";
+							}
 						}
 						unset($found, $oldCheckPos, $oldResultTree);
 					}
 				} else {
 					# simple rule
-					if ($debug) echo str_repeat("\t", $depth)."Simple multi rule at pos ".$checkPos.": ".json_encode($subRule)."\n";
 					$result = $this->checkRule($subRule, $checkPos, $debug, $depth + 1);
 					$matches = true;
 					if ($result == false) {
-						if ($debug) echo str_repeat("\t", $depth)."Failed simple multi rule: ".json_encode($subRule)."\n";
 						if ($checkPos >= $this->maxMatch[0]) {
 							$this->maxMatch[0] = $checkPos;
 							$this->maxMatch[2] = $matchLen;
@@ -514,18 +690,22 @@ class SnowCompiler {
 						return false;
 					}
 					$matchLen++;
-					if ($debug) echo str_repeat("\t", $depth)."Success simple multi rule: ".json_encode($subRule)."\n";
 					$resultTree[] = $result;
 					$checkPos += $result["len"];
 				}
 			}
 			$len = 0;
+			$indent = $this->indentationLevel;
 			foreach ($resultTree as &$rt) {
 				$len += $rt["len"];
-				unset($rt['len']);
+				if (isset($rt["indent"])) {
+					$indent = $rt["indent"];
+				}
+				unset($rt['len'], $rt["indent"]);
 			}
 			$resultTree["len"] = $len;
-			unset($len);
+			$resultTree["indent"] = $indent;
+			unset($len, $indent);
 			return ($matches ? $resultTree : false);
 		}
 	}

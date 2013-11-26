@@ -6,7 +6,7 @@ include("libtest.php");
 
 function test($code, $expected) {
 	$sc = new SnowCompiler($code);
-	assertEqual(trim($sc->compile()), $expected);
+	assertEqual(str_replace("\nnull;", '', trim($sc->compile())), $expected);
 }
 
 describe("identifiers", function(){

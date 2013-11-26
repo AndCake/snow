@@ -70,6 +70,31 @@ PHP:
 
 	$fungus = "Sarcoscypha coccinea"
 
+Global variables are all uppercase and are automatically imported within the functions they are used.
+Snow:
+
+	GLOB = 2
+	loca = 3
+
+	fn render
+		# will render 2
+		echo GLOB
+		# will issue an E_NOTICE
+		echo loca
+
+PHP:
+
+	$GLOB = 2;
+	$loca = 3;
+
+	function render() {
+		global $GLOB;
+		// will render 2
+		echo $GLOB;
+		// will issue an E_NOTICE
+		echo $loca;
+	}
+
 Constants
 ---------
 A constant has a prefixed "!" and supports assignment.

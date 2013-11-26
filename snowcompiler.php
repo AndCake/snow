@@ -120,7 +120,7 @@ class SnowCompiler {
 	"T_ARRAY_LITERAL": ["<T_ARRAY_START>", {"?": [{"|": ["<T_KEYVALUE_PAIR>", "<T_CONDITION_EXPRESSION>"]}, {"*": ["<T_COMMA>", {"|": ["<T_KEYVALUE_PAIR>", "<T_CONDITION_EXPRESSION>"]}]}]}, {"?": "<T_COMMA>"}, "<T_ARRAY_END>"],
 	"T_KEYVALUE_PAIR": ["<T_LITERAL>", "<T_COLON>", "<T_CONDITION_EXPRESSION>"],
 	"T_STRING_LITERAL": {"|": ["<T_STRING_LITERAL_UQUOTE>", "<T_STRING_LITERAL_TQUOTE>", "<T_STRING_LITERAL_DQUOTE>"]},
-	"T_IDENTIFIER": ["<T_IDENTIFIER_NAME>", {"*": ["<T_ARRAY_START>", "<T_CONDITION_EXPRESSION>", {"?": ["<T_ARRAY_RANGE>", "<T_CONDITION_EXPRESSION>"]}, "<T_ARRAY_END>"]}],
+	"T_IDENTIFIER": [{"|": ["<T_UPPERCASE_IDENTIFIER>", "<T_IDENTIFIER_NAME>"]}, {"*": ["<T_ARRAY_START>", "<T_CONDITION_EXPRESSION>", {"?": ["<T_ARRAY_RANGE>", "<T_CONDITION_EXPRESSION>"]}, "<T_ARRAY_END>"]}],
 	"T_ARRAY_START": "[ \\\\t]*\\\\[\\\\s*",
 	"T_OPERATOR_ASSIGN": "\\\\s*[\\\\+\\\\-\\\\*/\\\\%]?=\\\\s*",
 	"T_ASSIGN": "\\\\s*=\\\\s*",
@@ -129,7 +129,7 @@ class SnowCompiler {
 	"T_COMMA": "\\\\s*,\\\\s*",
 	"T_ARRAY_RANGE": "\\\\s*\\\\.\\\\.\\\\.\\\\s*",
 	"T_IDENTIFIER_NAME": "(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)",
-	"T_UPPERCASE_IDENTIFIER": "_*[A-Z_]+",
+	"T_UPPERCASE_IDENTIFIER": "(?!_POST|_GET|_FILES|_SESSION|_ENV|_REQUEST|_SERVER|_COOKIE|GLOBALS)_*[A-Z_]+",
 	"T_CLASS_IDENTIFIER": "_*[A-Z][a-zA-Z0-9]*",
 	"T_RBRACKET_OPEN": "[ ]*\\\\(\\\\s*",
 	"T_RBRACKET_CLOSE": "\\\\s*\\\\)",
@@ -167,6 +167,7 @@ class SnowCompiler {
 # ${E\x/a/b} - evaluate/compile everything from \x that is in the first match group of a and replace it with b
 # ${I} - add current indentation here
 # ${I-1} - add previous indentation here
+# ${T\x/TOKEN/output} - if TOKEN is in \x, then write output at the current position (whereas $('some-string':1) refers to how the matches should be concatenated)
 	protected $language = null;
 	protected $mapping = null;
 	protected $code = null;
@@ -200,7 +201,7 @@ class SnowCompiler {
 	"T_COMPLEX_STRING_OPERATION_ADD": " . \\\\2",
 	"T_EXISTS": "${\\\\1.2?defined(\'\\\\1\')/isset(\\\\1)}",
 	"T_EMPTY": "(${\\\\1.1?defined(\'\\\\1\') && strlen(\\\\1) > 0/(($_tmp1 = (\\\\1)) || true) && isset($_tmp1) && !empty($_tmp1) && (($_tmp1 = null) || true) || ($_tmp1 = null)})",
-	"T_FN_DEF": "function \\\\2(\\\\3.2) {\\\\4\\n${I-1}}",
+	"T_FN_DEF": "function \\\\2(\\\\3.2) {${T\\\\4/T_UPPERCASE_IDENTIFIER/global $$(\', $\':1);\\n}\\\\4\\n${I-1}}",
 	"T_EQUALS_COMPARISON": "\\\\1 === \\\\3",
 	"T_NEQUALS_COMPARISON": "\\\\1 !== \\\\3",
 	"T_GT_COMPARISON": "(gettype($_tmp1 = \\\\1) === gettype($_tmp2 = \\\\3) && ($_tmp1 \\\\2 $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))",
@@ -368,6 +369,25 @@ class SnowCompiler {
 			return $template;
 		}
 
+		preg_match_all('/\\$\\{T\\\\([1-9][0-9.]*)\\/([^\\/]*)\\/([^}]*)\\}/m', $template, $tokenMatches);
+		foreach ($tokenMatches[1] as $key => $match) {
+			# make find the element of match $1 in tree
+			$parts = explode(".", $match);
+			$oldValue = $tree;
+			for ($i = 0; $i < count($parts) - 1; $i++) {
+				$tree = $tree[intval($parts[$i]) - 1];
+			}
+			# search for token of match $2 in sub tree and store all found items in array
+			$tokens = array_unique($this->getValues($tree, $tokenMatches[2][$key]));
+			# then parse $3
+			preg_match('/\\$\\(\'([^\']*)\':1\\)/', $tokenMatches[3][$key], $rep);
+			$add = str_replace($rep[0], implode($rep[1], $tokens), $tokenMatches[3][$key]);
+			# and put the result instead of $tokenMatch[0][$key]
+			$template = str_replace($tokenMatches[0][$key], $add, $template);
+			# reset tree refs
+			$tree = $oldValue;
+		}
+
 		preg_match_all('/\\\\([1-9][0-9.]*)/m', $template, $matches);
 		foreach ($matches[1] as $key => $match) {
 			$parts = explode(".", $match);
@@ -440,6 +460,22 @@ class SnowCompiler {
 				$resultTemplate = str_replace($key, $re, $resultTemplate);
 			}
 			$result = $resultTemplate; 
+		}
+		return $result;
+	}
+
+	function getValues($ruleArray, $ruleName) {
+		$result = Array();
+		if (isset($ruleArray[$ruleName])) {
+			$result[] = $this->getValue($ruleArray[$ruleName]);
+		} else {
+			if (is_array($ruleArray)) foreach ($ruleArray as $name => $rule) {
+				if (isset($rule[$ruleName])) {
+					$result[] = $this->getValue($rule[$ruleName]);
+				} else {
+					$result = array_merge($result, $this->getValues($rule, $ruleName));
+				}
+			}
 		}
 		return $result;
 	}

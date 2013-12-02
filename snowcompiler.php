@@ -129,7 +129,7 @@ class SnowCompiler {
 	"T_COMMA": "\\\\s*,\\\\s*",
 	"T_ARRAY_RANGE": "\\\\s*\\\\.\\\\.\\\\.\\\\s*",
 	"T_IDENTIFIER_NAME": "(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)",
-	"T_UPPERCASE_IDENTIFIER": "(?!_POST|_GET|_FILES|_SESSION|_ENV|_REQUEST|_SERVER|_COOKIE|GLOBALS)_*[A-Z_]+",
+	"T_UPPERCASE_IDENTIFIER": "(?!_POST|_GET|_FILES|_SESSION|_ENV|_REQUEST|_SERVER|_COOKIE|HTTP_​RAW_​POST_​DATA|GLOBALS)_*[A-Z_]+",
 	"T_CLASS_IDENTIFIER": "_*[A-Z][a-zA-Z0-9]*",
 	"T_RBRACKET_OPEN": "[ ]*\\\\(\\\\s*",
 	"T_RBRACKET_CLOSE": "\\\\s*\\\\)",
@@ -231,8 +231,9 @@ class SnowCompiler {
 	"T_STRING_LITERAL_TQUOTE": "<<<EOF\\n${E\\\\2/\\\\{([^}]+)\\\\}/\\\\1}\\nEOF",
 	"T_FN_CHAINCALL": "${c}",
 	"T_DESTRUCTURING_ASSIGNMENT": "\\\\1 = \\\\3",
-	"T_ARRAY_LITERAL_IDENTIFIER_ONLY": "list(\\\\2)"
-}';
+	"T_ARRAY_LITERAL_IDENTIFIER_ONLY": "list(\\\\2)",
+	"SETUP": "function in($needle, $haystack){switch(gettype($haystack)){case \'string\': return strpos($haystack, $needle) !== false; case \'array\': return in_array($needle, $haystack); case \'integer\': return $haystack - $needle >= 0; case \'object\':return isset($haystack->$needle);default:return null;}}\\nfunction replace($haystack, $pattern, $rep) { $pp = \'/^[^a-zA-Z0-9\\\\s].*\'.str_replace(\'/\', \'\\\\/\', $pattern[0]).\'[imsxADSUXJu]*$/m\';if(preg_match($pp, $pattern)) return preg_replace($pattern, $rep, $haystack); else return str_replace($pattern, $rep, $haystack);}\\n\\n"
+	}';
 		$this->language = json_decode($this->ebnf, true);
 		$this->mapping = json_decode($this->mapRules, true);
 		$this->code = trim($code) . ($complete ? "\nnull" : "");
@@ -322,6 +323,9 @@ class SnowCompiler {
 				throw new Exception("Error at line ".($line - intval($this->lineOffset[$line]))." while parsing input: \"".$lines[$line - 1]."\"");
 			}
 			$result = $this->doMapping($tree);
+			if ($this->startWith === "T_EXPRESSIONS") {
+				$result = $this->mapping["SETUP"] . $result;
+			}
 			unset($tree);
 		} else {
 			throw new Exception("Unable to parse input: given input is no T_EXPRESSIONS:\n".$this->code);

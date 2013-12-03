@@ -55,7 +55,7 @@ class SnowCompiler {
 	"T_ASSIGNMENT": ["<T_IDENTIFIER>", "<T_OPERATOR_ASSIGN>", "<T_SIMPLE_EXPRESSION>"],
 	"T_DESTRUCTURING_ASSIGNMENT": ["<T_ARRAY_LITERAL_IDENTIFIER_ONLY>", "<T_ASSIGN>", "<T_SIMPLE_EXPRESSION>"],
 	"T_ARRAY_LITERAL_IDENTIFIER_ONLY": ["<T_ARRAY_START>", {"+": [{"?": [{"|": ["<T_IDENTIFIER>", "<T_ARRAY_LITERAL_IDENTIFIER_ONLY>"]}]}, "<T_COMMA>", {"?": [{"|": ["<T_IDENTIFIER>", "<T_ARRAY_LITERAL_IDENTIFIER_ONLY>"]}]}]}, "<T_ARRAY_END>"],
-	"T_RETURN": ["<T_KEY_RETURN>", "<T_SIMPLE_EXPRESSION>"],
+	"T_RETURN": ["<T_KEY_RETURN>", {"?": "<T_SIMPLE_EXPRESSION>"}],
 	"T_FNCALL": {"|": ["<T_FNDOCALL>", "<T_FNPLAINCALL>", "<T_FN_CHAINCALL>"]},
 	"T_FNDOCALL": ["<T_KEY_DO>", "<T_IDENTIFIER_NAME>"],
 	"T_FNCSCALL": [{"?": "<T_KEY_ONEW>"}, "<T_IDENTIFIER_NAME>", "<T_WHITESPACE>", "<T_FN_PARAMETERS1>"],
@@ -67,8 +67,8 @@ class SnowCompiler {
 	"T_CONST": ["!", "<T_UPPERCASE_IDENTIFIER>"],
 	"T_LOOP": {"|": ["<T_FOR_LOOP>", "<T_FOR_COUNT_UP_LOOP>", "<T_FOR_COUNT_DOWN_LOOP>", "<T_WHILE>"]},
 	"T_FOR_COUNT_UP_LOOP": ["<T_KEY_FOR>", "<T_IDENTIFIER>", "<T_KEY_IN>", "<T_CONDITION_EXPRESSION>", "<T_KEY_TO>", "<T_CONDITION_EXPRESSION>", {"?": ["<T_KEY_STEP>", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
-	"T_FOR_COUNT_DOWN_LOOP": ["<T_KEY_FOR>", "<T_IDENTIFIER>", "<T_KEY_IN>", "<T_CONDITION_EXPRESSION>", "<T_KEY_DOWNTO>", "<T_CONDITION_EXPRESSION>", {"?": ["<T_KEY_STEP>", "<T_NUMBER_LITERAL>"]}, "<T_INDENTED_EXPRESSIONS>"],
-	"T_FOR_LOOP": ["<T_KEY_FOR>", "<T_IDENTIFIER>", {"?": ["<T_COMMA>", "<T_IDENTIFIER>"]}, "<T_KEY_IN>", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>"],
+	"T_FOR_COUNT_DOWN_LOOP": ["<T_KEY_FOR>", "<T_IDENTIFIER>", "<T_KEY_IN>", "<T_CONDITION_EXPRESSION>", "<T_KEY_DOWNTO>", "<T_CONDITION_EXPRESSION>", {"?": ["<T_KEY_STEP>", {"|": ["<T_NUMBER_LITERAL>", "<T_CONST>"]}]}, "<T_INDENTED_EXPRESSIONS>"],
+	"T_FOR_LOOP": ["<T_KEY_FOR>", "<T_IDENTIFIER>", {"?": ["<T_COMMA>", "<T_IDENTIFIER>"]}, "<T_KEY_IN>", "<T_CONDITION_EXPRESSION>", "<T_INDENTED_EXPRESSIONS>"],
 	"T_IF": ["<T_KEY_IF>", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>", {"*": ["<T_ELIF>"]}, {"?": ["<T_ELSE>"]}],
 	"T_ELSE": ["<T_KEY_ELSE>", "<T_INDENTED_EXPRESSIONS>"],
 	"T_ELIF": ["<T_KEY_ELSEIF>", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
@@ -86,7 +86,7 @@ class SnowCompiler {
 	"T_KEY_CATCH": "catch[ ]+",
 	"T_KEY_FINALLY": "finally[ ]*",
 	"T_KEY_FN": "fn\\\\s+",
-	"T_KEY_RETURN": "[ ]*<-\\\\s*",
+	"T_KEY_RETURN": "[ ]*<-[ \\\\t]*",
 	"T_KEY_DO": "do\\\\s+",
 	"T_KEY_ONEW": "(new\\\\s+)",
 	"T_KEY_STEP": "\\\\s+step\\\\s+",
@@ -128,7 +128,7 @@ class SnowCompiler {
 	"T_COLON": "\\\\s*:\\\\s*",
 	"T_COMMA": "\\\\s*,\\\\s*",
 	"T_ARRAY_RANGE": "\\\\s*\\\\.\\\\.\\\\.\\\\s*",
-	"T_IDENTIFIER_NAME": "(?!fn\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)",
+	"T_IDENTIFIER_NAME": "(?!fn\\\\b|then|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)",
 	"T_UPPERCASE_IDENTIFIER": "(?!_POST|_GET|_FILES|_SESSION|_ENV|_REQUEST|_SERVER|_COOKIE|HTTP_​RAW_​POST_​DATA|GLOBALS)_*[A-Z_]+",
 	"T_CLASS_IDENTIFIER": "_*[A-Z][a-zA-Z0-9]*",
 	"T_RBRACKET_OPEN": "[ ]*\\\\(\\\\s*",
@@ -142,7 +142,7 @@ class SnowCompiler {
 	"T_COMPLEX_STRING_OPERATION_ADD": ["<T_STRING_CONCAT>", {"|": ["<T_FNCALL>", "<T_STRING_LITERAL>", "<T_IDENTIFIER>"]}],
 	"T_MODULO": "\\\\s+mod\\\\s+",
 	"T_STRING_CONCAT": "\\\\s*[\\\\+%&]\\\\s*",
-	"T_OPERATOR": "\\\\s*[\\\\-\\\\+\\\\*/]\\\\s*",
+	"T_OPERATOR": "[ \\t]*[\\\\-\\\\+\\\\*/][ \\t]*",
 	"T_STRING_LITERAL_UQUOTE": "\'([^\']*)\'",
 	"T_STRING_LITERAL_DQUOTE": "\\"([^\\"]*)\\"",
 	"T_STRING_LITERAL_TQUOTE": ["\\"\\"\\"", "([^\\"]|\\"[^\\"]|\\"\\"[^\\"])+", "\\"\\"\\""],
@@ -156,7 +156,7 @@ class SnowCompiler {
 	"T_OCT_NUMBER": "(0[0-7]+[1L]?)",
 	"T_FLOAT_NUMBER": "(-?[0-9]*\\\\.[0-9]+)",
 	"T_DEC_NUMBER": "(-?[0-9]+)",
-	"T_REGEXP_LITERAL": "/([^/]+)/[imsxADSUXJu]*",
+	"T_REGEXP_LITERAL": "/(\\\\\\\\/|[^/])*/[imsxADSUXJu]*",
 	"T_NEWLINE": "((?:[ \\\\t]*;)?[ \\\\t]*[\\r\\n])+|\\\\s*$"
 }';
 	protected $mapRules = '';
@@ -169,7 +169,7 @@ class SnowCompiler {
 # ${I-1} - add previous indentation here
 # ${T\x/TOKEN/output} - if TOKEN is in \x, then write output at the current position (whereas $('some-string':1) refers to how the matches should be concatenated)
 	protected $language = null;
-	protected $mapping = null;
+	public $mapping = null;
 	protected $code = null;
 	protected $stack = null;
 	protected $successStack = null;
@@ -182,7 +182,7 @@ class SnowCompiler {
 	"T_NEWLINE": "\\n",
 	"T_IF": "if (\\\\2) {\\\\3\\n${I-1}}\\\\4\\\\5\\n",
 	"T_EXPRESSION": "\\\\1\\\\2\\\\3\\\\4\\\\5\\\\6\\\\7\\\\8\\\\9;",
-	"T_TRY_CATCH": "try {\\\\2\\n${I-1}} catch (Exception \\\\5) {'.(PHP_VERSION_ID >= 50500 ? '' : '\\n${I}$catchGuard = true\\\\7.3').'\\\\6\\n${I-1}}'.(PHP_VERSION_ID >= 50500 ? '${\\\\7.3? finally {\\\\7.3\\n${I-1}}/}' : '\\nif(!isset($catchGuard)) {\\\\7.3\\n${I-1}} else {\\n${I}unset($catchGuard);\\n${I-1}}\\n').'",
+	"T_TRY_CATCH": "try {\\\\2\\n${I-1}} catch (Exception \\\\5) {'.(PHP_VERSION_ID >= 50500 ? '' : '\\n${I}$catchGuard = true;').'\\\\6\\n${I-1}}'.(PHP_VERSION_ID >= 50500 ? '${\\\\7.3? finally {\\\\7.3\\n${I-1}}/}' : '\\nif (!isset($catchGuard)) {\\\\7.3\\n${I-1}} else {\\n${I}unset($catchGuard);\\n${I-1}}\\n').'",
 	"T_CLASS": "class \\\\2\\\\3 {\\\\4\\n${I-2}}",
 	"T_CLASS_FN_DEF": "\\\\1\\\\2",
 	"T_CLASS_VAR_DEF": "\\\\1\\\\2;",
@@ -383,10 +383,13 @@ class SnowCompiler {
 			}
 			# search for token of match $2 in sub tree and store all found items in array
 			$tokens = array_unique($this->getValues($tree, $tokenMatches[2][$key]));
-			# then parse $3
-			preg_match('/\\$\\(\'([^\']*)\':1\\)/', $tokenMatches[3][$key], $rep);
-			$add = str_replace($rep[0], implode($rep[1], $tokens), $tokenMatches[3][$key]);
-			# and put the result instead of $tokenMatch[0][$key]
+			$add = "";
+			if (count($tokens) > 0) {
+				# then parse $3
+				preg_match('/\\$\\(\'([^\']*)\':1\\)/', $tokenMatches[3][$key], $rep);
+				$add = str_replace($rep[0], implode($rep[1], $tokens), $tokenMatches[3][$key]);
+				# and put the result instead of $tokenMatch[0][$key]
+			}
 			$template = str_replace($tokenMatches[0][$key], $add, $template);
 			# reset tree refs
 			$tree = $oldValue;

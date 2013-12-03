@@ -273,7 +273,7 @@ class SnowCompiler {
 			if (preg_match('/^\\s*$/', $line) || $inNoCompile || $continue) {
 				continue;
 			}
-			if ($indent[1] == "\t") {
+			if (count($indent) > 0 && $indent[1] == "\t") {
 				$depth = strlen($indent[0]);
 			} else {
 				$depth = strlen($indent[0]) / 4;

@@ -275,7 +275,7 @@ class SnowCompiler {
 			}
 			if (count($indent) > 0 && $indent[1] == "\t") {
 				$depth = strlen($indent[0]);
-			} else {
+			} else if (count($indent) > 0) {
 				$depth = strlen($indent[0]) / 4;
 			}
 			if ($depth < $prevDepth - 1) {

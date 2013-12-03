@@ -1,4 +1,9 @@
 <?php
+error_reporting(E_ALL
+/* 
+	& ~E_NOTICE
+//*/
+);
 $break = false;
 
 function breakpoint() {
@@ -81,7 +86,7 @@ class SnowCompiler {
 	"T_WHILE": ["<T_KEY_WHILE>", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
 	"T_KEY_CLASSTREE": "\\\\s+(extends|implements)\\\\s+",
 	"T_KEY_CLASS": "class\\\\s+",
-	"T_KEY_ATTRVISIBILITY": "(static|public|private|protected)\\\\s+",
+	"T_KEY_ATTRVISIBILITY": "(static|public|private|protected|final)\\\\s+",
 	"T_KEY_TRY": "try[ ]*",
 	"T_KEY_CATCH": "catch[ ]+",
 	"T_KEY_FINALLY": "finally[ ]*",
@@ -273,6 +278,7 @@ class SnowCompiler {
 			if (preg_match('/^\\s*$/', $line) || $inNoCompile || $continue) {
 				continue;
 			}
+			$depth = 0;
 			if (count($indent) > 0 && $indent[1] == "\t") {
 				$depth = strlen($indent[0]);
 			} else if (count($indent) > 0) {
@@ -283,11 +289,11 @@ class SnowCompiler {
 				$c = 1;
 				$ignore = false;
 				while (1) {
-					if (preg_match('/^\s*else\b/', $lines[$id + $c]) !== false) {
+					if (preg_match('/^\s*else\b/', isset($lines[$id + $c]) ? $lines[$id + $c] : "") !== false) {
 						$ignore = true;
 						break;
 					}
-					if (preg_match('/^\\s*$/', $lines[$id + $c]) === false) {
+					if (preg_match('/^\\s*$/', isset($lines[$id + $c]) ? $lines[$id + $c] : "") === false) {
 						break;
 					}
 					$c++;
@@ -296,7 +302,7 @@ class SnowCompiler {
 				for ($i = 1; $i <= $prevDepth - $depth; $i++) {
 					if (!$ignore || $i != ($prevDepth - $depth)) {
 						$this->lineOffset[$id + ($prevDepth - $depth) + 1]++;
-						$lines[$id - 1] .= "\n" . str_repeat("\t", $prevDepth - $i) . "null";
+						$lines[$id - 1] .= "\n" . str_repeat("\t", $prevDepth - $i) . "# end block";
 					}
 				}
 			}
@@ -316,11 +322,12 @@ class SnowCompiler {
 					$lines = explode("\n", substr($this->code, 0, $this->maxMatch['error']));
 					$line = count($lines);
 					$pre = array_pop($lines);
-					$post = array_shift(explode("\n", substr($this->code, $this->maxMatch['error'])));
+					$exploded = explode("\n", substr($this->code, $this->maxMatch['error']));
+					$post = array_shift($exploded);
 					$nl = str_repeat("-", strlen($pre)) . "^";
-					throw new Exception("Unexpected character while trying to parse ".$this->maxMatch[1]." at line ".($line - intval($this->lineOffset[$line])).": \n" . $pre . $post . "\n" . $nl);
+					throw new Exception("Unexpected character while trying to parse ".$this->maxMatch[1]." at line ".($line - (isset($this->lineOffset[$line]) ? intval($this->lineOffset[$line]) : 0)).": \n" . $pre . $post . "\n" . $nl);
 				}
-				throw new Exception("Error at line ".($line - intval($this->lineOffset[$line]))." while parsing input: \"".$lines[$line - 1]."\"");
+				throw new Exception("Error at line ".($line - (isset($this->lineOffset[$line]) ? intval($this->lineOffset[$line]) : 0))." while parsing input: \"".(isset($lines[$line - 1]) ? $lines[$line - 1] : '')."\"");
 			}
 			$result = $this->doMapping($tree);
 			if ($this->startWith === "T_EXPRESSIONS") {
@@ -400,10 +407,11 @@ class SnowCompiler {
 			$parts = explode(".", $match);
 			$oldValue = $tree;
 			for ($i = 0; $i < count($parts) - 1; $i++) {
-				$tree = $tree[intval($parts[$i]) - 1];
+				$key2 = intval($parts[$i]) - 1;
+				$tree = isset($tree[$key2]) ? $tree[$key2] : null;
 			}
 
-			if (($tree[0] !== null && !isset($tree[0])) && !isset($tree["match"])) { $tree = array_pop($tree); }
+			//if (($tree[0] !== null && !isset($tree[0])) && !isset($tree["match"])) { $tree = array_pop($tree); }
 			$val = $this->getValue($tree, intval($parts[$i]) - 1);
 			$replacements[0][$matches[0][$key]] = $val;
 			$tree = $oldValue;
@@ -412,7 +420,7 @@ class SnowCompiler {
 		preg_match_all('/\\$\\{I(-[0-9]+)?\\}/m', $template, $indentMatches);
 		foreach ($indentMatches[0] as $key => $match) {
 			$indent = $tree["indent"];
-			if ($indentMatches[1][$key][0] == "-") {
+			if (isset($indentMatches[1][$key][0]) && $indentMatches[1][$key][0] == "-") {
 				$indent = $tree["indent"] - (-1 * $indentMatches[1][$key]);
 			}
 			if ($indent > 0)
@@ -489,11 +497,11 @@ class SnowCompiler {
 
 	function doMapping($tree, $name = "") {
 		$result = "";
-		if ($this->mapping[$name]) {
+		if (isset($this->mapping[$name]) && $this->mapping[$name]) {
 			$result .= $this->parseMapping($this->mapping[$name], $tree);
 		} else {
 			foreach ($tree as $nodeName => $value) {
-				if ($this->mapping[$nodeName]) {
+				if (isset($this->mapping[$nodeName]) && $this->mapping[$nodeName]) {
 					$result .= $this->parseMapping($this->mapping[$nodeName], $value);
 				} else {
 					if (is_array($value)) {
@@ -512,18 +520,18 @@ class SnowCompiler {
 			$matches .= $ruleArray["match"];
 		} else {
 			if ($pos != -1) {
-				$ruleArray = $ruleArray[$pos];
-				if ($ruleArray["match"]) {
+				$ruleArray = (isset($ruleArray[$pos]) ? $ruleArray[$pos] : null);
+				if (isset($ruleArray["match"]) && $ruleArray["match"]) {
 					$matches .= $ruleArray["match"];
 					return $matches;
 				}
 			}
 			if (is_array($ruleArray)) {
 				foreach ($ruleArray as $name => $rule) {
-					if ($this->mapping[$name]) {
+					if (isset($this->mapping[$name]) && $this->mapping[$name]) {
 						$matches .= $this->doMapping($rule, $name);
 					} else {
-						if ($rule["match"]) {
+						if (isset($rule['match']) && $rule["match"]) {
 							$matches .= $rule["match"];
 						} else {
 							$matches .= $this->getValue($rule);
@@ -538,16 +546,16 @@ class SnowCompiler {
 	function checkRuleByName($ruleName, $pos = 0, $debug = false, $depth = 0) {
 		if ($rule = $this->language[$ruleName]) {
 			if ($debug) echo str_repeat(" ", $depth) . "Checking rule $ruleName at $pos\n";
-			if (is_array($this->stack[$pos]) && in_array($ruleName, $this->stack[$pos])) {
+			if (isset($this->stack[$pos]) && is_array($this->stack[$pos]) && in_array($ruleName, $this->stack[$pos])) {
 				return false;
 			}
-			if ($this->successStack[$pos][0] == $ruleName) return $this->successStack[$pos][1];
+			if (isset($this->successStack[$pos]) && isset($this->successStack[$pos][0]) && $this->successStack[$pos][0] == $ruleName) return $this->successStack[$pos][1];
 			$this->stack[$pos][] = $ruleName;
  			$result = $this->checkRule($rule, $pos, (gettype($debug) != "string" ? $debug : false) || ($ruleName == (gettype($debug) == "string" ? $debug : "")), $depth);
 			if ($ruleName === 'T_INDENT') {
 				$cline = substr($this->code, $pos, strpos($this->code, "\n", $pos) - $pos);
 				preg_match_all("/([ ]{4}|[\t])/", $cline, $matches);
-				if ($matches[1][0][0] == "\t" && !is_array($matches[1])) {
+				if (isset($matches[1]) && isset($matches[1][0]) && $matches[1][0][0] == "\t" && !is_array($matches[1])) {
 					if (preg_match("/^\t+([ ]{4})+\t*/", $cline)) {
 						$lines = explode("\n", substr($this->code, 0, $pos));
 						$line = count($lines);
@@ -578,14 +586,14 @@ class SnowCompiler {
 				if ($debug) {
 					echo str_repeat(" ", $depth) . "Matched rule $ruleName at $pos <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) . "\n";
 				}
-				$this->successStack[$pos] = Array($ruleName, $res, $indentationLevel);
+				$this->successStack[$pos] = Array($ruleName, $res, $this->indentationLevel);
 				$this->stack[$pos] = array_diff($this->stack[$pos], Array($ruleName));
 			} else {
 				$this->lastPos = $pos;
 				if ($debug) {
 					echo str_repeat(" ", $depth) . "Failed rule $ruleName at $pos <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) . "\n";
 				}
-				if ($this->maxMatch['dirty']) {
+				if (isset($this->maxMatch['dirty']) && $this->maxMatch['dirty']) {
 					$this->maxMatch['dirty'] = false;
 					$this->maxMatch[1] = $ruleName;
 				}

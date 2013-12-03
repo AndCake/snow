@@ -9,7 +9,7 @@ class FunctionTest extends SnowTestsuite {
 	function a() {
 		$pass;
 	};
-	null;
+	// end block;
 }
 ;
 null;');

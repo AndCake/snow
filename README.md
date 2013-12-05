@@ -374,6 +374,21 @@ PHP:
 
 	$a = ($height === $veryHigh ? "tall" : "small");
 
+#### Type Checks
+Snow:
+
+	if a isa number then a + 2
+	if a isa function then call_user_func(a)
+	if a isa float then intval(a)
+	if a isa Donkey then a.run()
+
+PHP:
+	
+	(is_numeric($a) ? $a + 2 : null);
+	(is_callable($a) ? call_user_func($a) : null);
+	(is_float($a) ? intval($a) : null);
+	($a instanceof Donkey ? $a->run() : null);
+
 Existence
 ---------
 There are two existence operators "`?`" and "`??`". The first checks with `isset(expr)` / `defined(const)`, the second with `!empty(expr)`.
@@ -502,3 +517,49 @@ PHP:
 
 	list($a,, $c) = array($b, $c, $a);
 	list($a, $b, list($c, $d)) = getLetters();
+
+Helper Functions
+----------------
+In order to unify the coding experience - especially with the usual suspects in PHP, some helper functions exist.
+
+#### The `in()` function
+
+The `in(needle, haystack)` function will return true, if the first argument is a part of the second argument. The `haystack` can be numbers,
+arrays, strings and objects.
+
+Snow:
+
+	if 3->in [1, 2, 3]
+		echo "3 is in.\n"
+	if "e"->in "test"
+		echo "e is in test.\n"
+	if 3->in 10
+		echo "3 is in 10.\n"
+
+PHP:
+	
+	if (in(3, Array(1, 2, 3))) {
+		echo("3 is in.\n");
+	}
+	if (in("e", "test")) {
+		echo("e is in test.\n");
+	}
+	if (in(3, 10)) {
+		echo("3 is in 10.\n");
+	}
+
+#### The `replace()` function
+
+The `replace(haystack, needle, replacement)` function will replace the `needle` with the `replacement` in the `haystack`. The `needle` can be either
+a regular expression, a normal string. If the `haystack` is an array, the `replace()` function will simply replace the `needle` with the `replacement`.
+
+Snow:
+
+	# will output "TesT"
+	echo "test"->replace 't', 'T'
+	
+	# will output "Test"
+	echo "test"->replace /^[a-z]/, 'T'
+	
+	# will output "[1, 4, 3]"
+	echo [1, 2, 3]->replace(2, 4)->json_encode()

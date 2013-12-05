@@ -33,7 +33,7 @@ function debugger($vars = null) {
 }
 
 class SnowCompiler {
-	static $VERSION = '0.0.5';
+	static $VERSION = '0.0.6';
 
 	protected $ebnf = '
 {
@@ -80,7 +80,7 @@ class SnowCompiler {
 	"T_IF_THEN": ["<T_KEY_IF>", "<T_PCONDITION>", "<T_KEY_THEN>", "<T_SIMPLE_EXPRESSION>", {"?": ["<T_KEY_ELSE>", "<T_SIMPLE_EXPRESSION>"]}],
 	"T_PCONDITION": {"|": ["<T_CONDITION>", ["<T_RBRACKET_OPEN>", "<T_CONDITION>", "<T_RBRACKET_CLOSE>"]]},
 	"T_CONDITION": ["<T_CONDITION_PART>", {"*": ["<T_BOOL_OP>", "<T_CONDITION_PART>"]}],
-	"T_CONDITION_PART": {"|": ["<T_PCOMPARISON>", [{"?": ["<T_BOOL_NEGATION>"]}, {"|": ["<T_EMPTY>", "<T_EXISTS>", "<T_SIMPLE_EXPRESSION>"]}]]},
+	"T_CONDITION_PART": [{"?": ["<T_BOOL_NEGATION>"]}, {"|": ["<T_PCOMPARISON>", "<T_EMPTY>", "<T_EXISTS>", "<T_SIMPLE_EXPRESSION>", "<T_CONDITION_PART>"]}],
 	"T_EMPTY": [{"|": ["<T_CONST>", "<T_CHAIN_EXPRESSION>"]}, "<T_EMPTY_OPERATOR>"],
 	"T_EXISTS": [{"|": ["<T_IDENTIFIER>", "<T_CONST>"]}, "<T_EXISTS_OPERATOR>"],
 	"T_WHILE": ["<T_KEY_WHILE>", "<T_PCONDITION>", "<T_INDENTED_EXPRESSIONS>"],
@@ -105,19 +105,24 @@ class SnowCompiler {
 	"T_KEY_ELSEIF": "\\\\s+el(?:se[ ]*)?if\\\\s+",
 	"T_KEY_ELSE": "\\\\s+else[ ]*",
 	"T_WHITESPACE": "[ ]+",
-	"T_EMPTY_OPERATOR": "\\\\?\\\\?",
-	"T_EXISTS_OPERATOR": "\\\\?",
+	"T_EMPTY_OPERATOR": "[ ]*\\\\?\\\\?",
+	"T_EXISTS_OPERATOR": "[ ]*\\\\?",
 	"T_CHAIN_OPERATOR": "\\\\s*->",
 	"T_PCOMPARISON": {"|": [["<T_RBRACKET_OPEN>", "<T_COMPARISON>", "<T_RBRACKET_CLOSE>"], "<T_COMPARISON>"]},
-	"T_COMPARISON": {"|": ["<T_EQUALS_COMPARISON>", "<T_NEQUALS_COMPARISON>", "<T_GT_COMPARISON>", "<T_LT_COMPARISON>"]},
+	"T_COMPARISON": {"|": ["<T_EQUALS_COMPARISON>", "<T_NEQUALS_COMPARISON>", "<T_GT_COMPARISON>", "<T_LT_COMPARISON>", "<T_TYPE_COMPARISON>"]},
+	"T_TYPE_COMPARISON": {"|": ["<T_BASIC_TYPE_COMPARISON>", "<T_OBJECT_TYPE_COMPARISON>"]},
+	"T_BASIC_TYPE_COMPARISON": ["<T_CONDITION_EXPRESSION>", "<T_ISA_OPERATOR>", "<T_BASIC_TYPE>"],
+	"T_OBJECT_TYPE_COMPARISON": ["<T_CONDITION_EXPRESSION>", "<T_ISA_OPERATOR>", "<T_CLASS_IDENTIFIER>"],
 	"T_EQUALS_COMPARISON": ["<T_CONDITION_EXPRESSION>", "<T_EQ_OPERATOR>", "<T_CONDITION_EXPRESSION>"],
 	"T_NEQUALS_COMPARISON": ["<T_CONDITION_EXPRESSION>", "<T_NEQ_OPERATOR>", "<T_CONDITION_EXPRESSION>"],
 	"T_GT_COMPARISON": ["<T_CONDITION_EXPRESSION>", "<T_GTE_OPERATOR>", "<T_CONDITION_EXPRESSION>"],
 	"T_LT_COMPARISON": ["<T_CONDITION_EXPRESSION>", "<T_LTE_OPERATOR>", "<T_CONDITION_EXPRESSION>"],
+	"T_BASIC_TYPE": "(number|string|float|double|boolean|bool|array|int|integer|function|long|null|resource|scalar|object)",
 	"T_EQ_OPERATOR": "\\\\s+(is|==)\\\\s+",
 	"T_NEQ_OPERATOR": "\\\\s+(isnt|!=)\\\\s+",
 	"T_GTE_OPERATOR": "\\\\s*>(=?)\\\\s*",
 	"T_LTE_OPERATOR": "\\\\s*<(=?)\\\\s*",
+	"T_ISA_OPERATOR": "\\\\s+isa\\\\s+",
 	"T_INCDEC_OPERATOR": "\\\\s*(\\\\+\\\\+)|(--)",
 	"T_PARAMETERS": ["<T_PARAMETER>", {"*": ["<T_COMMA>", "<T_PARAMETER>"]}],
 	"T_PARAMETER": ["<T_IDENTIFIER>", {"?": ["<T_ASSIGN>", "<T_LITERAL>"]}],
@@ -127,13 +132,13 @@ class SnowCompiler {
 	"T_STRING_LITERAL": {"|": ["<T_STRING_LITERAL_UQUOTE>", "<T_STRING_LITERAL_TQUOTE>", "<T_STRING_LITERAL_DQUOTE>"]},
 	"T_IDENTIFIER": [{"|": ["<T_UPPERCASE_IDENTIFIER>", "<T_IDENTIFIER_NAME>"]}, {"*": ["<T_ARRAY_START>", "<T_CONDITION_EXPRESSION>", {"?": ["<T_ARRAY_RANGE>", "<T_CONDITION_EXPRESSION>"]}, "<T_ARRAY_END>"]}],
 	"T_ARRAY_START": "[ \\\\t]*\\\\[\\\\s*",
-	"T_OPERATOR_ASSIGN": "\\\\s*[\\\\+\\\\-\\\\*/\\\\%]?=\\\\s*",
+	"T_OPERATOR_ASSIGN": "\\\\s*[\\\\+\\\\-\\\\*/\\\\%&|]?=\\\\s*",
 	"T_ASSIGN": "\\\\s*=\\\\s*",
 	"T_ARRAY_END": "\\\\s*\\\\]",
 	"T_COLON": "\\\\s*:\\\\s*",
 	"T_COMMA": "\\\\s*,\\\\s*",
 	"T_ARRAY_RANGE": "\\\\s*\\\\.\\\\.\\\\.\\\\s*",
-	"T_IDENTIFIER_NAME": "(?!fn\\\\b|then|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)",
+	"T_IDENTIFIER_NAME": "(?!fn\\\\b|continue\\\\b|break\\\\b|isnt\\\\b|is\\\\b|isa\\\\b|or\\\\b|and\\\\b|xor\\\\b|mod\\\\b|then\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)",
 	"T_UPPERCASE_IDENTIFIER": "(?!_POST|_GET|_FILES|_SESSION|_ENV|_REQUEST|_SERVER|_COOKIE|HTTP_​RAW_​POST_​DATA|GLOBALS)_*[A-Z_]+",
 	"T_CLASS_IDENTIFIER": "_*[A-Z][a-zA-Z0-9]*",
 	"T_RBRACKET_OPEN": "[ ]*\\\\(\\\\s*",
@@ -147,13 +152,14 @@ class SnowCompiler {
 	"T_COMPLEX_STRING_OPERATION_ADD": ["<T_STRING_CONCAT>", {"|": ["<T_FNCALL>", "<T_STRING_LITERAL>", "<T_IDENTIFIER>"]}],
 	"T_MODULO": "\\\\s+mod\\\\s+",
 	"T_STRING_CONCAT": "\\\\s*[\\\\+%&]\\\\s*",
-	"T_OPERATOR": "[ \\t]*[\\\\-\\\\+\\\\*/][ \\t]*",
+	"T_OPERATOR": "[ \\t]*(?:[\\\\-\\\\+\\\\*/&|]|xor)[ \\t]*",
 	"T_STRING_LITERAL_UQUOTE": "\'([^\']*)\'",
 	"T_STRING_LITERAL_DQUOTE": "\\"([^\\"]*)\\"",
 	"T_STRING_LITERAL_TQUOTE": ["\\"\\"\\"", "([^\\"]|\\"[^\\"]|\\"\\"[^\\"])+", "\\"\\"\\""],
-	"T_BOOL_OP": {"|": ["<T_BOOL_AND>", "<T_BOOL_OR>"]},
+	"T_BOOL_OP": {"|": ["<T_BOOL_AND>", "<T_BOOL_OR>", "<T_BOOL_XOR>"]},
 	"T_BOOL_AND": "\\\\s+and\\\\s+",
 	"T_BOOL_OR": "\\\\s+or\\\\s+",
+	"T_BOOL_XOR": "\\\\s+xor\\\\s+",
 	"T_BOOL_NEGATION": "\\\\s*not\\\\s+",
 	"T_BOOLEAN_LITERAL": "true|false",
 	"T_NUMBER_LITERAL": [{"|": ["<T_HEX_NUMBER>", "<T_OCT_NUMBER>", "<T_FLOAT_NUMBER>", "<T_DEC_NUMBER>"]}],
@@ -200,12 +206,14 @@ class SnowCompiler {
 	"T_BOOL_NEGATION": "!",
 	"T_INCDEC": "\\\\1\\\\2",
 	"T_LOOP_CONTROL": "\\\\1",
+	"T_BASIC_TYPE_COMPARISON": "is_${R\\\\3/number/numeric}${R\\\\3/function/callable}${R\\\\3/boolean/bool}(\\\\1)",
+	"T_OBJECT_TYPE_COMPARISON": "\\\\1 instanceof \\\\3",
 	"T_COMPLEX_OPERATION": "\\\\1\\\\2",
 	"T_COMPLEX_OPERATION_ADD": "\\\\1\\\\2",
 	"T_COMPLEX_STRING_OPERATION": "\\\\1\\\\2",
 	"T_COMPLEX_STRING_OPERATION_ADD": " . \\\\2",
 	"T_EXISTS": "${\\\\1.2?defined(\'\\\\1\')/isset(\\\\1)}",
-	"T_EMPTY": "(${\\\\1.1?defined(\'\\\\1\') && strlen(\\\\1) > 0/(($_tmp1 = (\\\\1)) || true) && isset($_tmp1) && !empty($_tmp1) && (($_tmp1 = null) || true) || ($_tmp1 = null)})",
+	"T_EMPTY": "(${\\\\1.1?defined(\'\\\\1\') && strlen(\\\\1) > 0/!empty(\\\\1)})",
 	"T_FN_DEF": "function \\\\2(\\\\3.2) {${T\\\\4/T_UPPERCASE_IDENTIFIER/global $$(\', $\':1);\\n}\\\\4\\n${I-1}}",
 	"T_EQUALS_COMPARISON": "\\\\1 === \\\\3",
 	"T_NEQUALS_COMPARISON": "\\\\1 !== \\\\3",
@@ -233,11 +241,11 @@ class SnowCompiler {
 	"T_RETURN": "return \\\\2;\\n",
 	"T_STRING_LITERAL_UQUOTE": "\\\\1",
 	"T_STRING_LITERAL_DQUOTE": "${E\\\\1/\\\\{([^}]+)\\\\}/\" . (\\\\1) . \"}",
-	"T_STRING_LITERAL_TQUOTE": "<<<EOF\\n${E\\\\2/\\\\{([^}]+)\\\\}/\\\\1}\\nEOF",
+	"T_STRING_LITERAL_TQUOTE": "<<<EOF\\n${E\\\\2/\\\\{([^}]+)\\\\}/\\\\1}\\nEOF\\n${I-1}",
 	"T_FN_CHAINCALL": "${c}",
 	"T_DESTRUCTURING_ASSIGNMENT": "\\\\1 = \\\\3",
 	"T_ARRAY_LITERAL_IDENTIFIER_ONLY": "list(\\\\2)",
-	"SETUP": "function in($needle, $haystack){switch(gettype($haystack)){case \'string\': return strpos($haystack, $needle) !== false; case \'array\': return in_array($needle, $haystack); case \'integer\': return $haystack - $needle >= 0; case \'object\':return isset($haystack->$needle);default:return null;}}\\nfunction replace($haystack, $pattern, $rep) { $pp = \'/^[^a-zA-Z0-9\\\\s].*\'.str_replace(\'/\', \'\\\\/\', $pattern[0]).\'[imsxADSUXJu]*$/m\';if(preg_match($pp, $pattern)) return preg_replace($pattern, $rep, $haystack); else return str_replace($pattern, $rep, $haystack);}\\n\\n"
+	"SETUP": "if(!function_exists(\'in\')){function in($needle, $haystack){switch(gettype($haystack)){case \'string\': return strpos($haystack, $needle) !== false; case \'array\': return in_array($needle, $haystack); case \'integer\': return $haystack - $needle >= 0; case \'object\':return isset($haystack->$needle);default:return null;}}}\\nif(!function_exists(\'replace\')){function replace($haystack, $pattern, $rep) { if (is_array($haystack)) { $pos = array_search($pattern, $haystack, true); if ($pos === false) return $haystack; return array_replace($haystack, Array($pos => $rep)); } $pp = \'/^[^a-zA-Z0-9\\\\s].*\' . str_replace(\'/\', \'\\\\/\', $pattern[0]) . \'[imsxADSUXJu]*$/m\'; if (preg_match($pp, $pattern)) return preg_replace($pattern, $rep, $haystack); else return str_replace($pattern, $rep, $haystack);}}\\n\\n"
 	}';
 		$this->language = json_decode($this->ebnf, true);
 		$this->mapping = json_decode($this->mapRules, true);
@@ -760,5 +768,51 @@ class SnowCompiler {
 			return ($matches ? $resultTree : false);
 		}
 	}
+
+	/** might need re-implementation; currently not able to produce useful code. Maybe using standard **/
+	/** PHP micro templating - just compiled? **/
+	/** Example: 
+			function template($file, $data = Array()) { 
+				ob_start(); 
+				$data = json_decode(json_encode($data)); 
+				if (file_exists($file . ".php")){include($file . ".php");} 
+				return ob_get_clean();
+			}
+	**/
+	/**
+	function template($file) {
+		// first retrieve the template data
+		$template = file_get_contents($file);
+
+		// then compile it
+		preg_match_all('/#\{([^\}]+)\}|#([\w.]+)/m', $template, $matches);
+		foreach ($matches[1] as $key => $match) {
+			$template = str_replace($matches[0][$key], "<%=" . (empty($match) ? $matches[2][$key] : $match) . "%>", $template);
+		}
+		$template = str_replace('\'', '\\\'', $template);
+
+		// right now the Snow syntax could turn out to be broken ...
+		// Example: <% for a in [1, 2, 3] %><li><%=a%></li>
+		preg_match_all('/<%(=)?((?:[^%]|%[^>])+)%>/m', $template, $matches);
+		foreach ($matches[2] as $key => $match) {
+			$match = str_replace('\\\'', '\'', $match);
+			$snow = new SnowCompiler($match, $matches[1][$key] == "=");
+			$result = $snow->compile();
+			if ($matches[1][$key] == '=') {
+				$template = str_replace($matches[0][$key], '\' . (' . $result . ') . \'', $template);
+			} else {
+				$template = str_replace($matches[0][$key], "';\n" . $result . "\n\$__p .= '", $template);
+			}
+		}
+		$template = "\$__p = '" . $template . "';";
+
+		// finally provide some means to execute it...
+		return function ($data) use ($template) {
+			$data = json_decode(json_encode($data));
+			eval($template);
+			return $__p;
+		}
+	}
+	**/
 }
 ?>

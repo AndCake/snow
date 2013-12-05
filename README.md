@@ -1,5 +1,6 @@
 Snow
 ====
+[![Build Status](https://travis-ci.org/AndCake/snow.png?branch=master)](https://travis-ci.org/AndCake/snow)
 
 This is a pure and simplified implementation of SnowScript as created by [runekaagaard](https://github.com/runekaagaard/snowscript). In general, Snowscript is a language that compiles to PHP. Its syntax is inspired by Python, Lua, Coffescript, Go and Scala and strives to be DRY, clean and easy to read as well as write. 
 

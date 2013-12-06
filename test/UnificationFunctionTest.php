@@ -30,4 +30,34 @@ e is in test.
 3 is in 10.
 ');
 	}
+
+	public function testTemplate() {
+		$this->runAndCompare('echo template \'<p>Hallo, {{name}} {{test}}</p>
+<ul>
+	{{#users}}
+		<li>{{.}}</li>
+	{{/users}}
+	{{^users}}<li>No users here!</li>{{/users}}
+	{{^testers}}
+		<li>No testers here.</li>
+	{{/testers}}
+</ul>
+{{>test/test}}\', ["name": \'Max\', "users": [\'Alfred\', \'Michel\', \'Inga\'], "test": fn <- 3]'
+		, '<p>Hallo, Max 3</p>
+<ul>
+	
+		<li>Alfred</li>
+	
+		<li>Michel</li>
+	
+		<li>Inga</li>
+	
+	
+	
+		<li>No testers here.</li>
+	
+</ul>
+<h1>Max</h1>
+');
+	}
 }

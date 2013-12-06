@@ -564,3 +564,36 @@ Snow:
 	
 	# will output "[1, 4, 3]"
 	echo [1, 2, 3]->replace(2, 4)->json_encode()
+
+#### The `template()` function
+
+The `template(tpl, data)` function provides a basic templating system with a syntax resembling [Mustache](http://mustache.github.io). The 
+first argument `tpl` can either be the template itself or the name of the template file. All template file names must end in `.tpl`. The 
+file path provided should be without the ending `.tpl`. The second parameter `data` provides means to transmit data to the template for use
+in template variables.
+
+Template `nameList.tpl`:
+	
+	<h2>Names</h2>
+	{{#names}}
+  		{{> user}}
+	{{/names}}
+
+Template `user.tpl`:
+	
+	<strong>{{name}}</strong>
+
+Snow:
+
+	echo template "nameList", ["names": [
+		["name": Carl"], 
+		[name: "Fred"], 
+		[name: "Dan"]
+	]]
+
+	### will output:
+		<h2>Names</h2>
+		<strong>Carl</strong>
+		<strong>Fred</strong>
+		<strong>Dan</strong>
+	###

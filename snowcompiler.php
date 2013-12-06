@@ -1,9 +1,5 @@
 <?php
-error_reporting(E_ALL
-/* 
-	& ~E_NOTICE
-//*/
-);
+error_reporting(E_ALL);
 $break = false;
 
 function breakpoint() {
@@ -33,7 +29,7 @@ function debugger($vars = null) {
 }
 
 class SnowCompiler {
-	static $VERSION = '0.0.6';
+	static $VERSION = '0.0.7';
 
 	protected $ebnf = '
 {
@@ -55,7 +51,7 @@ class SnowCompiler {
 	"T_TRY_CATCH": ["<T_KEY_TRY>", "<T_INDENTED_EXPRESSIONS>", "<T_NEWLINE>", "<T_KEY_CATCH>", "<T_IDENTIFIER>", "<T_INDENTED_EXPRESSIONS>", {"?": ["<T_NEWLINE>", "<T_KEY_FINALLY>", "<T_INDENTED_EXPRESSIONS>"]}],
 	"T_FN_DEF": ["<T_KEY_FN>", {"?": "<T_IDENTIFIER_NAME>"}, {"?": ["<T_RBRACKET_OPEN>", {"?": "<T_PARAMETERS>"}, "<T_RBRACKET_CLOSE>"]}, {"|": ["<T_INDENTED_EXPRESSIONS>", "<T_RETURN>"]}], 
 	"T_SIMPLE_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_DESTRUCTURING_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_FNCSCALL>", "<T_RETURN>", "<T_IDENTIFIER>", "<T_LITERAL>", "<T_CONST_DEF>", "<T_CONST>"]},
-	"T_CONDITION_EXPRESSION": {"|": [["<T_RBRACKET_OPEN>", {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]}, "<T_RBRACKET_CLOSE>"], {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]}]},
+	"T_CONDITION_EXPRESSION": {"|": [["<T_RBRACKET_OPEN>", {"|": ["<T_FN_DEF>", "<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]}, "<T_RBRACKET_CLOSE>"], {"|": ["<T_FN_DEF>", "<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]}]},
 	"T_CHAIN_EXPRESSION": {"|": ["<T_ASSIGNMENT>", "<T_OPERATION>", "<T_IF_THEN>", "<T_PCONDITION>", "<T_FNCALL>", "<T_LITERAL>", "<T_IDENTIFIER>", "<T_CONST>"]},
 	"T_ASSIGNMENT": ["<T_IDENTIFIER>", "<T_OPERATOR_ASSIGN>", "<T_SIMPLE_EXPRESSION>"],
 	"T_DESTRUCTURING_ASSIGNMENT": ["<T_ARRAY_LITERAL_IDENTIFIER_ONLY>", "<T_ASSIGN>", "<T_SIMPLE_EXPRESSION>"],
@@ -245,10 +241,11 @@ class SnowCompiler {
 	"T_FN_CHAINCALL": "${c}",
 	"T_DESTRUCTURING_ASSIGNMENT": "\\\\1 = \\\\3",
 	"T_ARRAY_LITERAL_IDENTIFIER_ONLY": "list(\\\\2)",
-	"SETUP": "if(!function_exists(\'in\')){function in($needle, $haystack){switch(gettype($haystack)){case \'string\': return strpos($haystack, $needle) !== false; case \'array\': return in_array($needle, $haystack); case \'integer\': return $haystack - $needle >= 0; case \'object\':return isset($haystack->$needle);default:return null;}}}\\nif(!function_exists(\'replace\')){function replace($haystack, $pattern, $rep) { if (is_array($haystack)) { $pos = array_search($pattern, $haystack, true); if ($pos === false) return $haystack; return array_replace($haystack, Array($pos => $rep)); } $pp = \'/^[^a-zA-Z0-9\\\\s].*\' . str_replace(\'/\', \'\\\\/\', $pattern[0]) . \'[imsxADSUXJu]*$/m\'; if (preg_match($pp, $pattern)) return preg_replace($pattern, $rep, $haystack); else return str_replace($pattern, $rep, $haystack);}}\\n\\n"
+	"SETUP": ""
 	}';
 		$this->language = json_decode($this->ebnf, true);
 		$this->mapping = json_decode($this->mapRules, true);
+		$this->mapping["SETUP"] = file_get_contents("setup.php");
 		$this->code = trim($code) . ($complete ? "\nnull" : "");
 		$this->startWith = ($complete ? "T_EXPRESSIONS" : "T_SIMPLE_EXPRESSION");
 		$this->stack = Array();
@@ -325,7 +322,7 @@ class SnowCompiler {
 		if ($tree = $this->checkRuleByName($this->startWith, 0, $debug)) {
 			if ($tree["len"] < strlen($this->code)) {
 				$lines = explode("\n", $this->code);
-				$line = count(explode("\n", substr($this->code, 0, $this->lastPos/*$tree["len"]*/)));
+				$line = count(explode("\n", substr($this->code, 0, $this->lastPos)));
 				if ($this->maxMatch[2] > 0) {
 					$lines = explode("\n", substr($this->code, 0, $this->maxMatch['error']));
 					$line = count($lines);
@@ -768,51 +765,5 @@ class SnowCompiler {
 			return ($matches ? $resultTree : false);
 		}
 	}
-
-	/** might need re-implementation; currently not able to produce useful code. Maybe using standard **/
-	/** PHP micro templating - just compiled? **/
-	/** Example: 
-			function template($file, $data = Array()) { 
-				ob_start(); 
-				$data = json_decode(json_encode($data)); 
-				if (file_exists($file . ".php")){include($file . ".php");} 
-				return ob_get_clean();
-			}
-	**/
-	/**
-	function template($file) {
-		// first retrieve the template data
-		$template = file_get_contents($file);
-
-		// then compile it
-		preg_match_all('/#\{([^\}]+)\}|#([\w.]+)/m', $template, $matches);
-		foreach ($matches[1] as $key => $match) {
-			$template = str_replace($matches[0][$key], "<%=" . (empty($match) ? $matches[2][$key] : $match) . "%>", $template);
-		}
-		$template = str_replace('\'', '\\\'', $template);
-
-		// right now the Snow syntax could turn out to be broken ...
-		// Example: <% for a in [1, 2, 3] %><li><%=a%></li>
-		preg_match_all('/<%(=)?((?:[^%]|%[^>])+)%>/m', $template, $matches);
-		foreach ($matches[2] as $key => $match) {
-			$match = str_replace('\\\'', '\'', $match);
-			$snow = new SnowCompiler($match, $matches[1][$key] == "=");
-			$result = $snow->compile();
-			if ($matches[1][$key] == '=') {
-				$template = str_replace($matches[0][$key], '\' . (' . $result . ') . \'', $template);
-			} else {
-				$template = str_replace($matches[0][$key], "';\n" . $result . "\n\$__p .= '", $template);
-			}
-		}
-		$template = "\$__p = '" . $template . "';";
-
-		// finally provide some means to execute it...
-		return function ($data) use ($template) {
-			$data = json_decode(json_encode($data));
-			eval($template);
-			return $__p;
-		}
-	}
-	**/
 }
 ?>

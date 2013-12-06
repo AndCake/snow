@@ -4,7 +4,9 @@ require_once dirname(__FILE__) . "/SnowTestsuite.php";
 class ClassTest extends SnowTestsuite {
 	public function testDeclaration() {
 		$this->compare(<<<CODE
-class A 
+class FooBar
+	static x = 3
+
 	fn __construct()
 		self..foo
 		@foo
@@ -13,9 +15,11 @@ class A
 	fn baz
 		self..baz
 		@baz
+		x = FooBar..x
 		parent..baz()
 CODE
-		, 'class A {
+		, 'class FooBar {
+	static $x = 3;
 	function __construct() {
 		self::$foo;
 		$this->foo;
@@ -24,6 +28,7 @@ CODE
 	function baz() {
 		self::$baz;
 		$this->baz;
+		$x  =  FooBar::$x;
 		parent::baz();
 	}
 	// end block
@@ -84,4 +89,4 @@ CODE
 };
 null;');
 	}
-}	
+}

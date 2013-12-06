@@ -1,4 +1,19 @@
 <?php
+/**
+	Copyright 2013 Robert Kunze
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	    http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+ */
 error_reporting(E_ALL);
 $break = false;
 
@@ -29,7 +44,7 @@ function debugger($vars = null) {
 }
 
 class SnowCompiler {
-	static $VERSION = '0.0.7';
+	static $version = '0.0.7';
 
 	protected $ebnf = '
 {
@@ -135,7 +150,7 @@ class SnowCompiler {
 	"T_COMMA": "\\\\s*,\\\\s*",
 	"T_ARRAY_RANGE": "\\\\s*\\\\.\\\\.\\\\.\\\\s*",
 	"T_IDENTIFIER_NAME": "(?!fn\\\\b|continue\\\\b|break\\\\b|isnt\\\\b|is\\\\b|isa\\\\b|or\\\\b|and\\\\b|xor\\\\b|mod\\\\b|then\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)",
-	"T_UPPERCASE_IDENTIFIER": "(?!_POST|_GET|_FILES|_SESSION|_ENV|_REQUEST|_SERVER|_COOKIE|HTTP_​RAW_​POST_​DATA|GLOBALS)_*[A-Z_]+",
+	"T_UPPERCASE_IDENTIFIER": "(?!_POST|_GET|_FILES|_SESSION|_ENV|_REQUEST|_SERVER|_COOKIE|HTTP_RAW_POST_DATA|GLOBALS)_*[A-Z_]+\\\\b",
 	"T_CLASS_IDENTIFIER": "_*[A-Z][a-zA-Z0-9]*",
 	"T_RBRACKET_OPEN": "[ ]*\\\\(\\\\s*",
 	"T_RBRACKET_CLOSE": "\\\\s*\\\\)",

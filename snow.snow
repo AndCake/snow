@@ -1,3 +1,18 @@
+###
+	Copyright 2013 Robert Kunze
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	    http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+###
 include_once "snowcompiler.php"
 outputFile = null
 interactive = true
@@ -7,12 +22,12 @@ if count(argv) > 1
 	result = getopt "o:c:h"
 	
 	if count(result) <= 0
-		for _val, i in argv
+		for val, i in argv
 			if i > 0
-				if _val[0] is '-'
-					result[_val[1]] = ""
+				if val[0] is '-'
+					result[val[1]] = ""
 				else
-					code = file_get_contents _val
+					code = file_get_contents val
 					interactive = false
 
 	if result['o']??
@@ -25,7 +40,7 @@ if count(argv) > 1
 		compileOnly = true
 
 	if result['h']?
-		ver = SnowCompiler..VERSION
+		ver = SnowCompiler..version
 		help = """
 Snow Script Compiler Version {ver}
 

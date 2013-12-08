@@ -150,7 +150,7 @@ class SnowCompiler {
 	"T_COMMA": "\\\\s*,\\\\s*",
 	"T_ARRAY_RANGE": "\\\\s*\\\\.\\\\.\\\\.\\\\s*",
 	"T_IDENTIFIER_NAME": "(?!fn\\\\b|continue\\\\b|break\\\\b|isnt\\\\b|is\\\\b|isa\\\\b|or\\\\b|and\\\\b|xor\\\\b|mod\\\\b|then\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)",
-	"T_UPPERCASE_IDENTIFIER": "(?!_POST|_GET|_FILES|_SESSION|_ENV|_REQUEST|_SERVER|_COOKIE|HTTP_RAW_POST_DATA|GLOBALS)_*[A-Z_]+\\\\b",
+	"T_UPPERCASE_IDENTIFIER": "(?!_POST|_GET|_FILES|_SESSION|_ENV|_REQUEST|_SERVER|_COOKIE|HTTP_RAW_POST_DATA|GLOBALS)_*[A-Z_][A-Z_0-9]+\\\\b",
 	"T_CLASS_IDENTIFIER": "_*[A-Z][a-zA-Z0-9]*",
 	"T_RBRACKET_OPEN": "[ ]*\\\\(\\\\s*",
 	"T_RBRACKET_CLOSE": "\\\\s*\\\\)",

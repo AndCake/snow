@@ -17,6 +17,24 @@ include_once "snowcompiler.php"
 outputFile = null
 interactive = true
 compileOnly = false
+watch = false
+
+fn watchChanges(dir, callback)
+	dp = opendir dir
+	if not dp
+		throw new Exception("Unable to open directory {dir}.")
+	while (file = readdir(dp)) isnt false
+		if /\.snow$/->preg_match(file) isnt false and filemtime(dir+'/'+file) > filemtime(dir+'/'+file->replace(/\.snow$/, '.php'))
+			echo "\nCompiling {dir + '/' + file}..."
+			callback->call_user_func(dir + '/' + file)
+		else if is_dir("{dir}/{file}") is true and file[0] isnt '.'
+			watchChanges(dir + '/' + file, callback)
+	closedir dp
+
+fn compile(file)
+	snow = new SnowCompiler(file->file_get_contents())
+	result = do snow.compile
+	file->replace(/\.snow$/, '.php')->file_put_contents "<?php\n{result};\n?>"
 
 if count(argv) > 1
 	result = getopt "o:c:h"
@@ -38,6 +56,8 @@ if count(argv) > 1
 		compileOnly = true
 	else if result['c']?
 		compileOnly = true
+	else if result['w']?
+		watch = true
 
 	if result['h']?
 		ver = SnowCompiler..version
@@ -45,14 +65,22 @@ if count(argv) > 1
 Snow Script Compiler Version {ver}
 
 Syntax:
-	{argv[0]} [-o <output file>] [-ch] [<input file>]
+	{argv[0]} [-o <output file>] [-chw] [<input file>]
 
 	-o <output file> - write the compiled result into the given file. If this parameter is missing, the compiled result will be written to stdout.
 	-c               - the input should only be compiled - not executed
 	-h               - shows this help
+	-w		 - watch mode: compile any changed snow file in given directory tree
 	<input file>     - the file that should be used as input. if this parameter is omitted, an interactive console will let you enter commands.
 """
 		die help
+
+if watch
+	echo "Waiting for file changes..."
+	while true is true
+		watchChanges ".", 'compile'
+		sleep 1
+	do die
 
 if interactive
 	fp = fopen "php://stdin", 'r'

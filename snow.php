@@ -22,6 +22,32 @@ include_once("snowcompiler.php");
 $outputFile  =  null;
 $interactive  =  true;
 $compileOnly  =  false;
+$watch  =  false;
+function watchChanges($dir, $callback) {
+	$dp  =  opendir($dir);
+	if (!$dp) {
+		throw(new Exception("Unable to open directory " . ($dir) . "."));
+}
+;
+	while (($file  =  readdir($dp)) !== false) {
+		if (preg_match('/\.snow$/', $file) !== false && (gettype($_tmp1 = filemtime($dir . '/' . $file)) === gettype($_tmp2 = filemtime($dir . '/' . replace($file, '/\.snow$/', '.php'))) && ($_tmp1  >  $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))) {
+			echo("\nCompiling " . ($dir . '/' . $file) . "...");
+			call_user_func($callback, $dir . '/' . $file);
+	} else if (is_dir("" . ($dir) . "/" . ($file) . "") === true && $file[0] !== '.') {
+			watchChanges($dir . '/' . $file, $callback);
+		}
+;
+		// end block;;
+	}
+;
+	closedir($dp);
+};
+function compile($file) {
+	$snow  =  new SnowCompiler(file_get_contents($file));
+	$result  =  $snow->compile();
+;
+	file_put_contents(replace($file, '/\.snow$/', '.php'), "<?php\n" . ($result) . ";\n?>");
+};
 if ((gettype($_tmp1 = count($argv)) === gettype($_tmp2 = 1) && ($_tmp1  >  $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))) {
 	$result  =  getopt("o:c:h");
 	if ((gettype($_tmp1 = count($result)) === gettype($_tmp2 = 0) && ($_tmp1  <=  $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))) {
@@ -54,6 +80,8 @@ if ((gettype($_tmp1 = count($argv)) === gettype($_tmp2 = 1) && ($_tmp1  >  $_tmp
 		$compileOnly  =  true;
 } else if (isset($result['c'])) {
 		$compileOnly  =  true;
+	} else if (isset($result['w'])) {
+		$watch  =  true;
 	}
 ;
 	if (isset($result['h'])) {
@@ -63,11 +91,12 @@ if ((gettype($_tmp1 = count($argv)) === gettype($_tmp2 = 1) && ($_tmp1  >  $_tmp
 Snow Script Compiler Version $ver
 
 Syntax:
-	$argv[0] [-o <output file>] [-ch] [<input file>]
+	$argv[0] [-o <output file>] [-chw] [<input file>]
 
 	-o <output file> - write the compiled result into the given file. If this parameter is missing, the compiled result will be written to stdout.
 	-c               - the input should only be compiled - not executed
 	-h               - shows this help
+	-w		 - watch mode: compile any changed snow file in given directory tree
 	<input file>     - the file that should be used as input. if this parameter is omitted, an interactive console will let you enter commands.
 
 EOF
@@ -76,6 +105,17 @@ EOF
 }
 ;
 	// end block;
+}
+;
+if ($watch) {
+	echo("Waiting for file changes...");
+	while (true === true) {
+		watchChanges(".", 'compile');
+		sleep(1);;
+	}
+;
+	die();
+;
 }
 ;
 if ($interactive) {

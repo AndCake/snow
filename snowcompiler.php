@@ -260,7 +260,7 @@ class SnowCompiler {
 	}';
 		$this->language = json_decode($this->ebnf, true);
 		$this->mapping = json_decode($this->mapRules, true);
-		$this->mapping["SETUP"] = file_get_contents("setup.php");
+		$this->mapping["SETUP"] = file_get_contents(dirname(__FILE__) . "/setup.php");
 		$this->code = trim($code) . ($complete ? "\nnull" : "");
 		$this->startWith = ($complete ? "T_EXPRESSIONS" : "T_SIMPLE_EXPRESSION");
 		$this->stack = Array();

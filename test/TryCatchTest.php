@@ -58,4 +58,38 @@ null;' : 'try {
 };
 null;'));
 	}
+
+	public function testInFunction() {
+		$this->compare(<<<CODE
+fn test
+	try
+		pass1
+	catch b
+		pass2
+CODE
+			, (PHP_VERSION_ID < 50500 ? 'function test() {
+	try {
+		$pass1;
+} catch (Exception $b) {
+$catchGuard = true;
+		$pass2;
+}
+if (!isset($catchGuard)) {
+} else {
+unset($catchGuard);
+}
+;
+	// end block;
+};
+null;' : 'function test() {
+	try {
+		$pass1;
+} catch (Exception $b) {
+		$pass2;
+}
+;
+	// end block;
+};
+null;'));
+	}
 }

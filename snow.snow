@@ -13,21 +13,33 @@
 	See the License for the specific language governing permissions and
 	limitations under the License.
 ###
-include_once "snowcompiler.php"
+include_once dirname(!__FILE__) + "/snowcompiler.php"
 outputFile = null
 interactive = true
 compileOnly = false
 watch = false
+LASTFAIL = 999999999999999
 
 fn watchChanges(dir, callback)
 	dp = opendir dir
 	if not dp
 		throw new Exception("Unable to open directory {dir}.")
 	while (file = readdir(dp)) isnt false
-		if /\.snow$/->preg_match(file) isnt false and filemtime(dir+'/'+file) > filemtime(dir+'/'+file->replace(/\.snow$/, '.php'))
-			echo "\nCompiling {dir + '/' + file}..."
-			callback->call_user_func(dir + '/' + file)
-		else if is_dir("{dir}/{file}") is true and file[0] isnt '.'
+		path = "{dir}/{file}"
+		oldtime = filemtime path
+		newfile = path->replace(/\.snow$/, '.php')
+		if /\.snow$/->preg_match(file) isnt false and (not file_exists(newfile) or filemtime(path) > filemtime(newfile) or oldtime > LASTFAIL)
+			echo "\nCompiling {path}..."
+			try
+				callback->call_user_func(dir + '/' + file)
+				echo " OK"
+				LASTFAIL = 999999999999999
+			catch e
+				echo "\n" + e.getMessage()
+				echo " FAILED"
+				file_put_contents newfile, time()
+				LASTFAIL = time()
+		else if is_dir(path) is true and file[0] isnt '.'
 			watchChanges(dir + '/' + file, callback)
 	closedir dp
 

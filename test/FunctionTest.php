@@ -53,4 +53,24 @@ function c() {global $A;
 };
 null;');
 	}
+
+	public function testInline() {
+		$this->compare(<<<CODE
+if a is 3 then a else fn <- true
+CODE
+			, '($a === 3 ? $a : function () {return true;
+
+});
+null;');
+	}
+
+	public function testMultiCSCalls() {
+		$this->compare(<<<CODE
+echo test [1, 2, fn <- 'test']
+CODE
+		, 'echo(test(Array(1, 2, function () {return \'test\';
+
+})));
+null;');		
+	}
 }

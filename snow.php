@@ -18,22 +18,43 @@ if(!function_exists('template')){function template($file, $data, $rootCore = '$d
 	See the License for the specific language governing permissions and
 	limitations under the License.
 */;
-include_once("snowcompiler.php");
+include_once(dirname(__FILE__) . "/snowcompiler.php");
 $outputFile  =  null;
 $interactive  =  true;
 $compileOnly  =  false;
 $watch  =  false;
-function watchChanges($dir, $callback) {
+$LASTFAIL  =  999999999999999;
+function watchChanges($dir, $callback) {global $LASTFAIL;
+
 	$dp  =  opendir($dir);
 	if (!$dp) {
 		throw(new Exception("Unable to open directory " . ($dir) . "."));
 }
 ;
 	while (($file  =  readdir($dp)) !== false) {
-		if (preg_match('/\.snow$/', $file) !== false && (gettype($_tmp1 = filemtime($dir . '/' . $file)) === gettype($_tmp2 = filemtime($dir . '/' . replace($file, '/\.snow$/', '.php'))) && ($_tmp1  >  $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))) {
-			echo("\nCompiling " . ($dir . '/' . $file) . "...");
-			call_user_func($callback, $dir . '/' . $file);
-	} else if (is_dir("" . ($dir) . "/" . ($file) . "") === true && $file[0] !== '.') {
+		$path  =  "" . ($dir) . "/" . ($file) . "";
+		$oldtime  =  filemtime($path);
+		$newfile  =  replace($path, '/\.snow$/', '.php');
+		if (preg_match('/\.snow$/', $file) !== false && (!file_exists($newfile) || (gettype($_tmp1 = filemtime($path)) === gettype($_tmp2 = filemtime($newfile)) && ($_tmp1  >  $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null)) || (gettype($_tmp1 = $oldtime) === gettype($_tmp2 = $LASTFAIL) && ($_tmp1  >  $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null)))) {
+			echo("\nCompiling " . ($path) . "...");
+			try {
+				call_user_func($callback, $dir . '/' . $file);
+				echo(" OK");
+				$LASTFAIL  =  999999999999999;
+} catch (Exception $e) {
+$catchGuard = true;
+				echo("\n" . $e->getMessage());
+				echo(" FAILED");
+				file_put_contents($newfile, time());
+				$LASTFAIL  =  time();
+}
+if (!isset($catchGuard)) {
+} else {
+unset($catchGuard);
+}
+;
+			// end block;
+	} else if (is_dir($path) === true && $file[0] !== '.') {
 			watchChanges($dir . '/' . $file, $callback);
 		}
 ;

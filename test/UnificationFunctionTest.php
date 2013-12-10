@@ -42,7 +42,7 @@ e is in test.
 		<li>No testers here.</li>
 	{{/testers}}
 </ul>
-{{>test/test}}\', ["name": \'Max\', "users": [\'Alfred\', \'Michel\', \'Inga\'], "test": fn <- 3]'
+{{>test}}\', ["name": \'Max\', "users": [\'Alfred\', \'Michel\', \'Inga\'], "test": fn <- 3]'
 		, '<p>Hallo, Max 3</p>
 <ul>
 	

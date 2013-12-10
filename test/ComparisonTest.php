@@ -30,9 +30,13 @@ null;');
 		$this->compare(<<<CODE
 if a? then a
 if a['b']?? then a
+not @a['c']?
+not @a[b]??
 CODE
 		, '(isset($a) ? $a : null);
 ((!empty($a[\'b\'])) ? $a : null);
+!isset($this->a[\'c\']);
+!(!empty($this->a[$b]));
 null;');
 	}
 }

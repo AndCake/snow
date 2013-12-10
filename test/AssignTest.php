@@ -23,5 +23,12 @@ list($a, $b, $c) = $d;
 list($a,, $c) = $c;
 null;');
 	}
+
+	public function testInlineFunction() {
+		$this->compare('result = db.find("user", "name", fn(val) <- (val->strlen() > 3))', '$result  =  $db->find("user", "name", function ($val) {return ((gettype($_tmp1 = strlen($val)) === gettype($_tmp2 = 3) && ($_tmp1  >  $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null)));
+
+});
+null;');
+	}
 }
 ?>

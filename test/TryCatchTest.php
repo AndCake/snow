@@ -86,8 +86,7 @@ null;' : 'function test() {
 		$pass1;
 } catch (Exception $b) {
 		$pass2;
-}
-;
+};
 	// end block;
 };
 null;'));

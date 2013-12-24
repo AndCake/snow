@@ -15,6 +15,9 @@
 	limitations under the License.
  */
 error_reporting(E_ALL);
+
+# mini extension-less debugger
+# @todo maybe introduce into Snow later on (needs web interface, though)
 $break = false;
 
 function breakpoint() {
@@ -44,12 +47,14 @@ function debugger($vars = null) {
 }
 
 class SnowCompiler {
+	# current compiler version
 	static $version = '0.0.7';
 
-	protected $ebnf = '
+	# the Snow language definition in a JSON-ENBF:
+	protected $ebnf = <<<EOL
 {
 	"T_NULL": "null\\\\b",
-	"T_INDENT": "([ ]{4}|\\\\t)+",
+	"T_INDENT": "([ ]{4}|\\t)+",
 	"T_COMMENT": {"|": ["<T_MULTILINE_COMMENT>", "<T_SINGLELINE_COMMENT>"]},
 	"T_CLASS": ["<T_KEY_CLASS>", "<T_CLASS_IDENTIFIER>", {"*": ["<T_KEY_CLASSTREE>", "<T_CLASS_IDENTIFIER>", {"*": ["<T_COMMA>", "<T_CLASS_IDENTIFIER>"]}]}, "<T_CLASS_BODY>"],
 	"T_MULTILINE_COMMENT": "###([^#]|#[^#]|##[^#])+###",
@@ -102,7 +107,7 @@ class SnowCompiler {
 	"T_KEY_CATCH": "catch[ ]+",
 	"T_KEY_FINALLY": "finally[ ]*",
 	"T_KEY_FN": "fn\\\\s*",
-	"T_KEY_RETURN": "[ ]*<-[ \\\\t]*",
+	"T_KEY_RETURN": "[ ]*<-[ \\t]*",
 	"T_KEY_DO": "do\\\\s+",
 	"T_KEY_ONEW": "(new\\\\s+)",
 	"T_KEY_STEP": "\\\\s+step\\\\s+",
@@ -142,7 +147,7 @@ class SnowCompiler {
 	"T_KEYVALUE_PAIR": ["<T_LITERAL>", "<T_COLON>", "<T_CONDITION_EXPRESSION>"],
 	"T_STRING_LITERAL": {"|": ["<T_STRING_LITERAL_UQUOTE>", "<T_STRING_LITERAL_TQUOTE>", "<T_STRING_LITERAL_DQUOTE>"]},
 	"T_IDENTIFIER": [{"|": ["<T_UPPERCASE_IDENTIFIER>", "<T_IDENTIFIER_NAME>"]}, {"*": ["<T_ARRAY_START>", "<T_CONDITION_EXPRESSION>", {"?": ["<T_ARRAY_RANGE>", "<T_CONDITION_EXPRESSION>"]}, "<T_ARRAY_END>"]}],
-	"T_ARRAY_START": "[ \\\\t]*\\\\[\\\\s*",
+	"T_ARRAY_START": "[ \\t]*\\\\[\\\\s*",
 	"T_OPERATOR_ASSIGN": "\\\\s*[\\\\+\\\\-\\\\*/\\\\%&|]?=\\\\s*",
 	"T_ASSIGN": "\\\\s*=\\\\s*",
 	"T_ARRAY_END": "\\\\s*\\\\]",
@@ -164,9 +169,9 @@ class SnowCompiler {
 	"T_MODULO": "\\\\s+mod\\\\s+",
 	"T_STRING_CONCAT": "\\\\s*[\\\\+%&]\\\\s*",
 	"T_OPERATOR": "[ \\t]*(?:[\\\\-\\\\+\\\\*/&|]|xor)[ \\t]*",
-	"T_STRING_LITERAL_UQUOTE": "\'([^\']*)\'",
-	"T_STRING_LITERAL_DQUOTE": "\\"([^\\"]*)\\"",
-	"T_STRING_LITERAL_TQUOTE": ["\\"\\"\\"", "([^\\"]|\\"[^\\"]|\\"\\"[^\\"])+", "\\"\\"\\""],
+	"T_STRING_LITERAL_UQUOTE": "'([^']*)'",
+	"T_STRING_LITERAL_DQUOTE": "\"([^\"]*)\"",
+	"T_STRING_LITERAL_TQUOTE": ["\"\"\"", "([^\"]|\"[^\"]|\"\"[^\"])+", "\"\"\""],
 	"T_BOOL_OP": {"|": ["<T_BOOL_AND>", "<T_BOOL_OR>", "<T_BOOL_XOR>"]},
 	"T_BOOL_AND": "\\\\s+and\\\\s+",
 	"T_BOOL_OR": "\\\\s+or\\\\s+",
@@ -179,8 +184,9 @@ class SnowCompiler {
 	"T_FLOAT_NUMBER": "(-?[0-9]*\\\\.[0-9]+)",
 	"T_DEC_NUMBER": "(-?[0-9]+)",
 	"T_REGEXP_LITERAL": "/(\\\\\\\\/|[^/])*/[imsxADSUXJu]*",
-	"T_NEWLINE": "((?:[ \\\\t]*;)?[ \\\\t]*[\\r\\n])+|\\\\s*$"
-}';
+	"T_NEWLINE": "((?:[ \\t]*;)?[ \\t]*[\\r\\n])+|\\\\s*$"
+}
+EOL;
 	protected $mapRules = '';
 # ${c} - special command: create recursive chain
 # \x.y - look in tree at position x and in x look at position y
@@ -200,6 +206,8 @@ class SnowCompiler {
 	protected $lastPos = 0;
 
 	function __construct($code, $complete = true) {
+		# compilation rules (might need optimization so we can actually override it in a
+		# Snow -> CoffeeScript/JS/Java/whatever compiler, for example
 		$this->mapRules = '{
 	"T_NEWLINE": "\\n",
 	"T_IF": "if (\\\\2) {\\\\3\\n${I-1}}\\\\4\\\\5\\n",
@@ -260,7 +268,7 @@ class SnowCompiler {
 	}';
 		$this->language = json_decode($this->ebnf, true);
 		$this->mapping = json_decode($this->mapRules, true);
-		$this->mapping["SETUP"] = file_get_contents(dirname(__FILE__) . "/setup.php");
+		$this->mapping["SETUP"] = preg_replace('/\s+/m', ' ', preg_replace('/^\\s*(#|\\/\\/).*$/m', '', substr(file_get_contents(dirname(__FILE__) . "/setup.php"), 2)))."\n";
 		$this->code = trim($code) . ($complete ? "\nnull" : "");
 		$this->startWith = ($complete ? "T_EXPRESSIONS" : "T_SIMPLE_EXPRESSION");
 		$this->stack = Array();
@@ -272,6 +280,7 @@ class SnowCompiler {
 		$this->prepareCode();
 	}
 
+	# this method pre-parses the code in order to analyze it's structure
 	function prepareCode() {
 		$lines = explode("\n", $this->code);
 		$prevDepth = 0;
@@ -299,7 +308,7 @@ class SnowCompiler {
 				continue;
 			}
 			$depth = 0;
-			if (count($indent) > 0 && $indent[1] == "\t") {
+			if (count($indent) > 1 && $indent[1] == "\t") {
 				$depth = strlen($indent[0]);
 			} else if (count($indent) > 0) {
 				$depth = strlen($indent[0]) / 4;
@@ -331,6 +340,7 @@ class SnowCompiler {
 		$this->code = implode("\n", $lines);
 	}
 
+	# this method triggers the compilation procedures...
 	function compile($debug = false) {
 		$result = "";
 		if (empty($this->code) || $this->code === "\nnull") return "";
@@ -392,6 +402,7 @@ class SnowCompiler {
 		return $template;
 	}
 
+	# converts the parsed and tokenized code tree into the actual output code
 	function parseMapping($template, $tree) {
 		$replacements = Array();
 		preg_match('/\\$\\{c\\}/m', $template, $chain);
@@ -499,6 +510,7 @@ class SnowCompiler {
 		return $result;
 	}
 
+	# retrieves all values of a tree-node and it's sub nodes that conform to the given ruleName.
 	function getValues($ruleArray, $ruleName) {
 		$result = Array();
 		if (isset($ruleArray[$ruleName])) {
@@ -514,7 +526,8 @@ class SnowCompiler {
 		}
 		return $result;
 	}
-
+	
+	# triggers the conversion from parsed and tokenized code tree to output code
 	function doMapping($tree, $name = "") {
 		$result = "";
 		if (isset($this->mapping[$name]) && $this->mapping[$name]) {
@@ -533,6 +546,7 @@ class SnowCompiler {
 		return $result;
 	}
 
+	# finds the tree node's actual value (the original source code fragment)
 	function getValue($ruleArray, $pos = -1) {
 		# go down until I find a match
 		$matches = "";
@@ -563,6 +577,7 @@ class SnowCompiler {
 		return $matches;
 	}
 
+	# checks whether or not the given code starting from $pos does fulfill the rule $ruleName
 	function checkRuleByName($ruleName, $pos = 0, $debug = false, $depth = 0) {
 		if ($rule = $this->language[$ruleName]) {
 			if ($debug) echo str_repeat(" ", $depth) . "Checking rule $ruleName at $pos\n";
@@ -624,6 +639,8 @@ class SnowCompiler {
 			throw new Exception("Unable to check rule ".$ruleName.": no such rule!");
 		}
 	}
+	
+	# checks the current code fragment starting in position $pos for the given $rule description
 	function checkRule($rule, $pos = 0, $debug = false, $depth = 0) {
 		if (gettype($rule) == "string") {
 			if (preg_match("`^<([\\w_]+)>\$`m", $rule, $matches)) {

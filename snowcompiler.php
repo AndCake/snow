@@ -20,12 +20,12 @@ error_reporting(E_ALL);
 # @todo maybe introduce into Snow later on (needs web interface, though)
 $break = false;
 
-function breakpoint() {
+function debugger() {
 	global $break;
 	$break = true;
 }
 
-function debugger($vars = null) {
+function breakpoint($vars = null) {
 	global $break;
 	if (!$break) return; 
 	echo "\nDEBUGGER HALT. PRESS RETURN TO CONTINUE; PRESS S TO PRINT THE FULL STACK TRACE; PRESS SPACE TO CONTINUE EXECUTION.\n";
@@ -268,7 +268,7 @@ EOL;
 	}';
 		$this->language = json_decode($this->ebnf, true);
 		$this->mapping = json_decode($this->mapRules, true);
-		$this->mapping["SETUP"] = preg_replace('/\s+/m', ' ', preg_replace('/^\\s*(#|\\/\\/).*$/m', '', substr(file_get_contents(dirname(__FILE__) . "/setup.php"), 2)))."\n";
+		$this->mapping["SETUP"] = preg_replace(Array('/^\\s*(#|\\/\\/|<\\?).*$/m', '/\s+/m'), Array('', ' '), file_get_contents(dirname(__FILE__) . "/setup.php"))."\n";
 		$this->code = trim($code) . ($complete ? "\nnull" : "");
 		$this->startWith = ($complete ? "T_EXPRESSIONS" : "T_SIMPLE_EXPRESSION");
 		$this->stack = Array();

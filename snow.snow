@@ -14,64 +14,83 @@
 	limitations under the License.
 ###
 include_once dirname(!__FILE__) + "/snowcompiler.php"
+
 outputFile = null
 interactive = true
 compileOnly = false
 watch = false
 LASTFAIL = 999999999999999
 
+# this function waites for changes in the failed of the given directory
+# if a change occurs, the callback function is called with the file that 
+# changes as the argument.
 fn watchChanges(dir, callback)
 	dp = opendir dir
 	if not dp
 		throw new Exception("Unable to open directory {dir}.")
+	# read all the files and directory names
 	while (file = readdir(dp)) isnt false
 		path = "{dir}/{file}"
+		# check change time of tge snow file
 		oldtime = filemtime path
 		newfile = path->replace(/\.snow$/, '.php')
+		# if the current file is a snow file and it is newer than the compiled php file
 		if /\.snow$/->preg_match(file) isnt false and (not file_exists(newfile) or filemtime(path) > filemtime(newfile) or oldtime > LASTFAIL)
-			echo "\nCompiling {path}..."
 			try
+				# call the callback function with the changed snow file
 				callback->call_user_func(dir + '/' + file)
-				echo " OK"
 				LASTFAIL = 999999999999999
 			catch e
+				# if an exception occured, show the error message
 				echo "\n" + e.getMessage()
 				echo " FAILED"
+				# put the current time into the php file (so we will not try to 
+				# compile it again until the .snow file changed)
 				file_put_contents newfile, time()
 				LASTFAIL = time()
 		else if is_dir(path) is true and file[0] isnt '.'
+			# if the current file is a directory and not a hidden one
+			# recursively call youself
 			watchChanges(dir + '/' + file, callback)
 	closedir dp
 
+# this function compiles the given file and writes it to the hard disk
 fn compile(file)
+	# inform the user that we are compiling the file
+	echo "\nCompiling {file}..."
+	# do the actual compilation
 	snow = new SnowCompiler(file->file_get_contents())
 	result = do snow.compile
+	# write the result out into the php file
 	file->replace(/\.snow$/, '.php')->file_put_contents "<?php\n{result};\n?>"
+	# inform the user that we are done.
+	echo " OK"
 
+# if the user provided some more arguments
 if count(argv) > 1
-	result = getopt "o:c:h"
-	
-	if count(result) <= 0
-		for val, i in argv
-			if i > 0
-				if val[0] is '-'
-					result[val[1]] = ""
-				else
-					code = file_get_contents val
-					interactive = false
-
-	if result['o']??
-		outputFile = result['o']
-	if result['c']??
-		code = file_get_contents result['c']
+	# parse them
+	result = getopt "o:chw", ["outfile:", "compile", "help", "watch"]
+	args = argv->array_slice(result->count() + 1)
+	if args[0]?? and args[0]->file_exists()
+		code = file_get_contents args[0]
 		interactive = false
+
+	# if the user provided the parameter to name his output file
+	if result['o']?? or result['outfile']??
+		# we store the value
+		outputFile = result['o']
+
+	# if the user chose to have the code only compiled & not executed
+	if result['c']? or result['compile']?
 		compileOnly = true
-	else if result['c']?
-		compileOnly = true
-	else if result['w']?
+
+	# if the user wants to watch current execution directory and 
+	# auto-compile all snow files in it as soon as they change
+	if result['w']? or result['watch']?
 		watch = true
 
-	if result['h']?
+	# if the user wants to review the help
+	if result['h']? or result['help']?
 		ver = SnowCompiler..version
 		help = """
 Snow Script Compiler Version {ver}
@@ -87,36 +106,54 @@ Syntax:
 """
 		die help
 
+# in case the user activated the watch mode
 if watch
+	# tell him so
 	echo "Waiting for file changes..."
+	# and loop until the end of time (or the user presses CTRL+C)
 	while true is true
+		# for all changes, compile the respective file
 		watchChanges ".", 'compile'
 		sleep 1
 	do die
 
+# if the options enable the interactive mode (no file given)
 if interactive
+	# read the code from stdin
 	fp = fopen "php://stdin", 'r'
 	input = ""
 	while not feof fp
+		# read until the user sends the EOF signal (CTRL+D)
 		input = input % fread(fp, 4096)
+	# and use the input as the source code
 	code = input
 
+# compile the source code
 snow = new SnowCompiler(code)
 result = do snow.compile
 
+# if the user only wanted to compile the source
 if compileOnly is true
+	# wrap it
 	result = "<?php\n{result};\n?>"
+	# if an output file was given
 	if outputFile??
+		# write the resulting code into the output file
 		file_put_contents outputFile, result
 	else
+		# else print it out on the screen
 		echo result
+
 else if compileOnly is false
-	echo "\n==> Result: \n"
+	# if the user wanted the code to be executed
 	lines = ";"->explode(result)
+	# find the last code line
 	for i in count(lines) - 1 downto 0
 		trimmed = trim lines[i]
 		if not empty trimmed
 			lines[i] = "return " + lines[i]
 			break
+	# then evaluate the resulting code
 	result = eval ";"->implode lines
+	# and print it's result
 	echo result

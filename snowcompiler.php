@@ -61,7 +61,7 @@ class SnowCompiler {
 	"T_SINGLELINE_COMMENT": "#([^\\n]*)",
 	"T_INCDEC": ["<T_IDENTIFIER>", "<T_INCDEC_OPERATOR>"],
 	"T_INDENTED_EXPRESSIONS": {"+": ["<T_NEWLINE>", "<T_INDENT>", "<T_EXPRESSION>"]},
-	"T_CLASS_BODY": {"+": ["<T_NEWLINE>", "<T_INDENT>", {"|":["<T_CLASS_FN_DEF>", "<T_CLASS_VAR_DEF>", "<T_CLASS_CONST_DEF>", "<T_COMMENT>"]}]},
+	"T_CLASS_BODY": {"*": ["<T_NEWLINE>", "<T_INDENT>", {"|":["<T_CLASS_FN_DEF>", "<T_CLASS_VAR_DEF>", "<T_CLASS_CONST_DEF>", "<T_COMMENT>"]}]},
 	"T_CLASS_FN_DEF": [{"?": "<T_KEY_ATTRVISIBILITY>"}, "<T_FN_DEF>"],
 	"T_CLASS_VAR_DEF": [{"?": "<T_KEY_ATTRVISIBILITY>"}, "<T_PARAMETER>"],
 	"T_CLASS_CONST_DEF": ["<T_CONST>", "<T_ASSIGN>", "<T_LITERAL>"],
@@ -156,7 +156,7 @@ class SnowCompiler {
 	"T_ARRAY_RANGE": "\\\\s*\\\\.\\\\.\\\\.\\\\s*",
 	"T_IDENTIFIER_NAME": "(?!fn\\\\b|continue\\\\b|break\\\\b|isnt\\\\b|is\\\\b|isa\\\\b|or\\\\b|and\\\\b|xor\\\\b|mod\\\\b|then\\\\b|for\\\\b|if\\\\b|try\\\\b|catch\\\\b|finally\\\\b|class\\\\b|null\\\\b|true\\\\b|false\\\\b|do\\\\b|else\\\\b|elif\\\\b|while\\\\b|downto\\\\b)(@?)_*[a-zA-Z]([_a-zA-Z0-9]*(\\\\.{1,2}[_a-zA-Z]+[_a-zA-Z0-9]*)*)",
 	"T_UPPERCASE_IDENTIFIER": "(?!_POST|_GET|_FILES|_SESSION|_ENV|_REQUEST|_SERVER|_COOKIE|HTTP_RAW_POST_DATA|GLOBALS)_*[A-Z_][A-Z_0-9]*\\\\b",
-	"T_CLASS_IDENTIFIER": "_*[A-Z][a-zA-Z0-9]*",
+	"T_CLASS_IDENTIFIER": "_*[A-Z][a-zA-Z0-9_]*",
 	"T_RBRACKET_OPEN": "[ ]*\\\\(\\\\s*",
 	"T_RBRACKET_CLOSE": "\\\\s*\\\\)",
 	"T_OPERATION": {"|": ["<T_COMPLEX_OPERATION>", "<T_COMPLEX_STRING_OPERATION>", "<T_INCDEC>"]},
@@ -653,6 +653,7 @@ EOL;
 					if ($debug) echo str_repeat(" ", $depth) . "Matched at $pos: base rule $rule <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) ."\n";
 					return Array("match" => $matches[1], "pos" => $pos, "len" => strlen($matches[1]), "indent" => $this->indentationLevel);
 				} else {
+					$this->errors[$pos] = $rule;
 					if ($debug) echo str_repeat(" ", $depth) . "Fail at $pos: base rule $rule <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) ."\n";
 					return false;
 				}

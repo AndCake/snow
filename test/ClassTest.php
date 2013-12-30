@@ -89,4 +89,13 @@ CODE
 };
 null;');
 	}
+
+	public function testEmptyDeclaration() {
+		$this->compare(<<<CODE
+class XTest_And_2Y
+CODE
+			, 'class XTest_And_2Y {
+};
+null;');
+	}
 }

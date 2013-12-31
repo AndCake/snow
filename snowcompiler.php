@@ -16,36 +16,6 @@
  */
 error_reporting(E_ALL);
 
-# mini extension-less debugger
-# @todo maybe introduce into Snow later on (needs web interface, though)
-$break = false;
-
-function debugger() {
-	global $break;
-	$break = true;
-}
-
-function breakpoint($vars = null) {
-	global $break;
-	if (!$break) return; 
-	echo "\nDEBUGGER HALT. PRESS RETURN TO CONTINUE; PRESS S TO PRINT THE FULL STACK TRACE; PRESS SPACE TO CONTINUE EXECUTION.\n";
-	var_dump($vars);
-	$trace = debug_backtrace();
-	echo $trace[1]["function"] . ":" . $trace[0]["line"]."\n";
-	system("stty -icanon");
-	$c = fread(STDIN, 1);
-	system("stty sane");
-	if ($c == "\n") {
-		return;
-	} else if ($c == " ") {
-		$break = false;
-		return;
-	} else if ($c == "s") {
-		debug_print_backtrace();
-		debugger($vars);
-	}
-}
-
 class SnowCompiler {
 	# current compiler version
 	static $version = '0.0.7';
@@ -205,13 +175,13 @@ EOL;
 	protected $maxMatch = null;
 	protected $lastPos = 0;
 
-	function __construct($code, $complete = true) {
+	function __construct($code, $complete = true, $debug = false) {
 		# compilation rules (might need optimization so we can actually override it in a
 		# Snow -> CoffeeScript/JS/Java/whatever compiler, for example
 		$this->mapRules = '{
 	"T_NEWLINE": "\\n",
 	"T_IF": "if (\\\\2) {\\\\3\\n${I-1}}\\\\4\\\\5\\n",
-	"T_EXPRESSION": "\\\\1\\\\2\\\\3\\\\4\\\\5\\\\6\\\\7\\\\8\\\\9;",
+	"T_EXPRESSION": "'.($debug ? 'breakpoint(get_defined_vars());' : '').'\\\\1\\\\2\\\\3\\\\4\\\\5\\\\6\\\\7\\\\8\\\\9;",
 	"T_TRY_CATCH": "try {\\\\2\\n${I-1}} catch (Exception \\\\6) {'.(PHP_VERSION_ID >= 50500 ? '' : '\\n${I}$catchGuard = true;').'\\\\7\\n${I-1}}'.(PHP_VERSION_ID >= 50500 ? '${\\\\8.4? finally {\\\\8.4\\n${I-1}}/}' : '\\nif (!isset($catchGuard)) {\\\\8.4\\n${I-1}} else {\\n${I}unset($catchGuard);\\n${I-1}}\\n').'",
 	"T_CLASS": "class \\\\2\\\\3 {\\\\4\\n${I-2}}",
 	"T_CLASS_FN_DEF": "\\\\1\\\\2",
@@ -341,7 +311,7 @@ EOL;
 	}
 
 	# this method triggers the compilation procedures...
-	function compile($debug = false) {
+	function compile($debug = false, $setup = true) {
 		$result = "";
 		if (empty($this->code) || $this->code === "\nnull") return "";
 		if ($tree = $this->checkRuleByName($this->startWith, 0, $debug)) {
@@ -360,7 +330,7 @@ EOL;
 				throw new Exception("Error at line ".($line - (isset($this->lineOffset[$line]) ? intval($this->lineOffset[$line]) : 0))." while parsing input: \"".(isset($lines[$line - 1]) ? $lines[$line - 1] : '')."\"");
 			}
 			$result = $this->doMapping($tree);
-			if ($this->startWith === "T_EXPRESSIONS") {
+			if ($this->startWith === "T_EXPRESSIONS" && $setup) {
 				$result = $this->mapping["SETUP"] . $result;
 			}
 			unset($tree);
@@ -587,31 +557,42 @@ EOL;
 			if (isset($this->successStack[$pos]) && isset($this->successStack[$pos][0]) && $this->successStack[$pos][0] == $ruleName) return $this->successStack[$pos][1];
 			$this->stack[$pos][] = $ruleName;
  			$result = $this->checkRule($rule, $pos, (gettype($debug) != "string" ? $debug : false) || ($ruleName == (gettype($debug) == "string" ? $debug : "")), $depth);
+ 			# is we're to check for an indentation token
 			if ($ruleName === 'T_INDENT') {
+				# get the current line
 				$cline = substr($this->code, $pos, strpos($this->code, "\n", $pos) - $pos);
+				# and get the amount of indentation "characters"
 				preg_match_all("/([ ]{4}|[\t])/", $cline, $matches);
 				if (isset($matches[1]) && isset($matches[1][0]) && $matches[1][0][0] == "\t" && !is_array($matches[1])) {
+					# if we found tabs and spaces mixed
 					if (preg_match("/^\t+([ ]{4})+\t*/", $cline)) {
 						$lines = explode("\n", substr($this->code, 0, $pos));
 						$line = count($lines);
+						# tell the user.
 						throw new Exception("Mixed spaces with tabs used for indentation in line $line. Please fix.");
 					}
+					# save the measured indentation depth
 					$indentDepth = strlen($matches[1][0]);
 				} else {
+					# if we found spaces but there's tabs mixed in between
 					if (preg_match("/(?:^\t+[ ]{4})|(?:^[ ]{4}\t+)/", $cline)) {
 						$lines = explode("\n", substr($this->code, 0, $pos));
 						$line = count($lines);
+						# tell the user
 						throw new Exception("Mixed spaces with tabs used for indentation in line $line. Please fix.");
 					}
+					# save the measured indentation depth
 					$indentDepth = count($matches[1]);
-				}				
+				}
+				# the measured indentation depth is smaller than it should be
 				if ($indentDepth < $this->indentationLevel) {
+					# so we need to reducing the indentation depth and remove items from the stack as well
 					$this->stack[$pos] = array_diff($this->stack[$pos], Array($ruleName));
-					#echo "moving out " . abs($indentDepth - $this->indentationLevel) . " levels.\n";
 					$result = false;
 				}
 				$this->indentationLevel = $indentDepth;
 			}
+			# if the rule matched
 			if ($result != false) {
 				$res = Array();
 				$res[$ruleName] = $result;
@@ -621,13 +602,16 @@ EOL;
 				if ($debug) {
 					echo str_repeat(" ", $depth) . "Matched rule $ruleName at $pos <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) . "\n";
 				}
+				# add the information to the stack of all successful matches
 				$this->successStack[$pos] = Array($ruleName, $res, $this->indentationLevel);
 				$this->stack[$pos] = array_diff($this->stack[$pos], Array($ruleName));
 			} else {
+				# the rule did not match
 				$this->lastPos = $pos;
 				if ($debug) {
 					echo str_repeat(" ", $depth) . "Failed rule $ruleName at $pos <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) . "\n";
 				}
+				# remove the dirty flag and save what did not match
 				if (isset($this->maxMatch['dirty']) && $this->maxMatch['dirty']) {
 					$this->maxMatch['dirty'] = false;
 					$this->maxMatch[1] = $ruleName;
@@ -653,7 +637,6 @@ EOL;
 					if ($debug) echo str_repeat(" ", $depth) . "Matched at $pos: base rule $rule <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) ."\n";
 					return Array("match" => $matches[1], "pos" => $pos, "len" => strlen($matches[1]), "indent" => $this->indentationLevel);
 				} else {
-					$this->errors[$pos] = $rule;
 					if ($debug) echo str_repeat(" ", $depth) . "Fail at $pos: base rule $rule <===> " . str_replace("\n", "#", substr($this->code, $pos, 10)) ."\n";
 					return false;
 				}
@@ -664,10 +647,12 @@ EOL;
 			$checkPos = $pos;
 			$matchLen = 0;
 			foreach ($rule as $modifier => $subRule) {
+				# if we have a complex rule
 				if (in_array($modifier, Array("+", "?", "*", "|"), true)) {
-					# complex rule
+					# check if the type of complex rule is an "OR" rule
 					if ($modifier == "|") {
 						$matches = false;
+						# yep, is an "OR" rule, so then at least one of the sub-rules needs to match
 						if (gettype($subRule) == "string") {
 							$result = $this->checkRule($subRule, $checkPos, $debug, $depth + 1);
 							$matches = $matches || $result != false;
@@ -697,15 +682,19 @@ EOL;
 							}
 						}
 					} else {
-						# quantity modifier
+						# we got a quantity modifier (+ ? or *)
 						$found = 0;
 						$matches = true;
 						$oldCheckPos = $checkPos;
+						# remember the old result tree (just in case we have to roll back to the previous state)
 						$oldResultTree = array_merge($resultTree, Array());
 						$indent = $this->indentationLevel;
+						# so we just for as long as we find correct matches
 						while ($matches) {
+							# just in case we reached the end of the code
 							if ($checkPos >= strlen($this->code)) {
 								$matches = false;
+								# we stop it here...
 								break;
 							}
 							if (gettype($subRule) == "string") {
@@ -721,12 +710,16 @@ EOL;
 								$oldCheckPos = $checkPos;
 								$oldResultTree = $resultTree;
 								foreach ($subRule as $subsubRule) {
+									# if we reached the end of the code
 									if ($checkPos >= strlen($this->code)) {
+										# if we're not checking for a newline, then it's an automatic fail match
 										if (is_array($subsubRule) || $subsubRule != "<T_NEWLINE>") {
 											$matches = false;
 										}
+										# stop it
 										break;
 									}
+									# no stopping necessary, so we just check the sub sub rule
 									$result = $this->checkRule($subsubRule, $checkPos, $debug, $depth + 1);
 									$matches = $matches && $result != false;
 									if ($matches) {
@@ -738,18 +731,22 @@ EOL;
 									}
 								}
 								if (!$matches) {
-									# roll back
+									# the result does not match, so we need to roll back
 									$resultTree = $oldResultTree;
-									$checkPos = $oldCheckPos;									
+									$checkPos = $oldCheckPos;
 								}
 							}
 							if ($matches) $found++;
 						}
+						# if the exact number of matches was found for the given modifier
 						if (($found >= 1 && $modifier == "+") || $modifier == "*" || ($found <= 1 && $modifier == "?")) {
+							# we have a match
 							$matches = true;
 							if ($debug) echo str_repeat(" ", $depth). "Modifier $modifier matched for rule " . json_encode($rule) . "\n";
 						} else {
+							# if the indentation is not the current indentation level any more
 							if ($indent != $this->indentationLevel) {
+								# then the modifier matched, but we are in the wrong recursion level to handle it.
 								$matches = true;
 								if ($debug) echo str_repeat(" ", $depth). "Modifier $modifier matched but have to jump further up for rule " . json_encode($rule) . "\n";
 								$checkPos -= $result['len'];
@@ -766,9 +763,10 @@ EOL;
 						unset($found, $oldCheckPos, $oldResultTree);
 					}
 				} else {
-					# simple rule
+					# we have a simple array rule
 					$result = $this->checkRule($subRule, $checkPos, $debug, $depth + 1);
 					$matches = true;
+					# if one of the entries fails, then the whole array is "failed".
 					if ($result == false) {
 						if ($checkPos >= $this->maxMatch[0]) {
 							$this->maxMatch[0] = $checkPos;
@@ -776,6 +774,7 @@ EOL;
 							$this->maxMatch['dirty'] = true;
 							$this->maxMatch['error'] = $checkPos;
 						}
+						# so we just break here
 						return false;
 					}
 					$matchLen++;

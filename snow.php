@@ -19,6 +19,8 @@
 include_once(dirname(__FILE__) . "/snowcompiler.php");
 $outputFile  =  null;
 $interactive  =  true;
+$HELPERS  =  true;
+$DEBUG  =  false;
 $compileOnly  =  false;
 $watch  =  false;
 $LASTFAIL  =  999999999999999;
@@ -72,13 +74,13 @@ unset($catchGuard);
 	closedir($dp);
 };
 // this function compiles the given file and writes it to the hard disk;
-function compile($file) {
+function compile($file) {global $DEBUG, $HELPERS;
+
 	// inform the user that we are compiling the file;
 	echo("\nCompiling " . ($file) . "...");
 	// do the actual compilation;
-	$snow  =  new SnowCompiler(file_get_contents($file));
-	$result  =  $snow->compile();
-;
+	$snow  =  new SnowCompiler(file_get_contents($file), true, $DEBUG);
+	$result  =  $snow->compile(false, $HELPERS);
 	// write the result out into the php file;
 	file_put_contents(replace($file, '/\.snow$/', '.php'), "<?php\n" . ($result) . ";\n?>");
 	// inform the user that we are done.;
@@ -87,7 +89,7 @@ function compile($file) {
 // if the user provided some more arguments;
 if ((gettype($_tmp1 = count($argv)) === gettype($_tmp2 = 1) && ($_tmp1  >  $_tmp2 && (($_tmp1 = $_tmp2 = null) || true)) || ($_tmp1 = $_tmp2 = null))) {
 	// parse them;
-	$result  =  getopt("o:chw", Array("outfile:", "compile", "help", "watch"));
+	$result  =  getopt("o:chwf", Array("outfile:", "compile", "help", "watch", "functions"));
 	$args  =  array_slice($argv, count($result) + 1);
 	if ((!empty($args[0])) && file_exists($args[0])) {
 		$code  =  file_get_contents($args[0]);
@@ -98,6 +100,14 @@ if ((gettype($_tmp1 = count($argv)) === gettype($_tmp2 = 1) && ($_tmp1  >  $_tmp
 	if ((!empty($result['o'])) || (!empty($result['outfile']))) {
 		// we store the value;
 		$outputFile  =  $result['o'];
+}
+;
+	if (isset($result['d']) || isset($result['debug'])) {
+		$DEBUG  =  true;
+}
+;
+	if (isset($result['f']) || isset($result['functions'])) {
+		$HELPERS  =  false;
 }
 ;
 	// if the user chose to have the code only compiled & not executed;
@@ -119,12 +129,13 @@ if ((gettype($_tmp1 = count($argv)) === gettype($_tmp2 = 1) && ($_tmp1  >  $_tmp
 Snow Script Compiler Version $ver
 
 Syntax:
-	$argv[0] [-o <output file>] [-chw] [<input file>]
+	$argv[0] [-o <output file>] [-chwf] [<input file>]
 
 	-o <output file> - write the compiled result into the given file. If this parameter is missing, the compiled result will be written to stdout.
 	-c               - the input should only be compiled - not executed
 	-h               - shows this help
-	-w		 - watch mode: compile any changed snow file in given directory tree
+	-f               - do not include helper functions into the compiled output
+	-w               - watch mode: compile any changed snow file in given directory tree
 	<input file>     - the file that should be used as input. if this parameter is omitted, an interactive console will let you enter commands.
 
 EOF
@@ -165,9 +176,8 @@ if ($interactive) {
 }
 ;
 // compile the source code;
-$snow  =  new SnowCompiler($code);
-$result  =  $snow->compile();
-;
+$snow  =  new SnowCompiler($code, true, $DEBUG);
+$result  =  $snow->compile(false, $HELPERS);
 // if the user only wanted to compile the source;
 if ($compileOnly === true) {
 	// wrap it;

@@ -185,3 +185,39 @@ if (!function_exists('template')) {
 		return $code; 
 	}
 }
+
+# the DEBUGGER functions
+#if (!function_exists("debugger")) {
+#	$break = false;
+
+	# 
+	# debugger() -> void
+	# 
+	# this function stops the current execution renders some instructions.
+	# It does not yet support the web interface (clicking a button/link to proceed/control execution)
+	#
+#	function debugger() {
+#		global $break;
+#		$break = true;
+#	}
+
+	# this is a "private" function for the debugger, which renders a breakpoint
+#	function breakpoint($vars = null) {
+#		global $break;
+#		if (!$break || !defined("STDIN")) return;
+#		echo "\nDEBUGGER HALT. PRESS RETURN TO CONTINUE; PRESS S TO PRINT THE FULL STACK TRACE; PRESS SPACE TO CONTINUE EXECUTION.\n";
+#		var_dump($vars);
+#		$trace = debug_backtrace();
+#		echo $trace[1]["function"] . ":" . $trace[0]["line"]."\n";
+#		while (!in(($c=`read -s -n1 valu; echo \$valu`), Array("\n", ' ', 's')));
+#		if ($c == "\n") {
+#			return;
+#		} else if ($c == " ") {
+#			$break = false;
+#			return;
+#		} else if ($c == "s") {
+#			debug_print_backtrace();
+#			breakpoint($vars);
+#		}
+#	}	
+#}

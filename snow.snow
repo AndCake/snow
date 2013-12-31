@@ -17,6 +17,8 @@ include_once dirname(!__FILE__) + "/snowcompiler.php"
 
 outputFile = null
 interactive = true
+HELPERS = true
+DEBUG = false
 compileOnly = false
 watch = false
 LASTFAIL = 999999999999999
@@ -59,8 +61,8 @@ fn compile(file)
 	# inform the user that we are compiling the file
 	echo "\nCompiling {file}..."
 	# do the actual compilation
-	snow = new SnowCompiler(file->file_get_contents())
-	result = do snow.compile
+	snow = new SnowCompiler(file->file_get_contents(), true, DEBUG)
+	result = snow.compile false, HELPERS
 	# write the result out into the php file
 	file->replace(/\.snow$/, '.php')->file_put_contents "<?php\n{result};\n?>"
 	# inform the user that we are done.
@@ -69,7 +71,7 @@ fn compile(file)
 # if the user provided some more arguments
 if count(argv) > 1
 	# parse them
-	result = getopt "o:chw", ["outfile:", "compile", "help", "watch"]
+	result = getopt "o:chwf", ["outfile:", "compile", "help", "watch", "functions"]
 	args = argv->array_slice(result->count() + 1)
 	if args[0]?? and args[0]->file_exists()
 		code = file_get_contents args[0]
@@ -79,6 +81,12 @@ if count(argv) > 1
 	if result['o']?? or result['outfile']??
 		# we store the value
 		outputFile = result['o']
+
+	if result['d']? or result['debug']?
+		DEBUG = true
+
+	if result['f']? or result['functions']?
+		HELPERS = false
 
 	# if the user chose to have the code only compiled & not executed
 	if result['c']? or result['compile']?
@@ -96,12 +104,13 @@ if count(argv) > 1
 Snow Script Compiler Version {ver}
 
 Syntax:
-	{argv[0]} [-o <output file>] [-chw] [<input file>]
+	{argv[0]} [-o <output file>] [-chwf] [<input file>]
 
 	-o <output file> - write the compiled result into the given file. If this parameter is missing, the compiled result will be written to stdout.
 	-c               - the input should only be compiled - not executed
 	-h               - shows this help
-	-w		 - watch mode: compile any changed snow file in given directory tree
+	-f               - do not include helper functions into the compiled output
+	-w               - watch mode: compile any changed snow file in given directory tree
 	<input file>     - the file that should be used as input. if this parameter is omitted, an interactive console will let you enter commands.
 """
 		die help
@@ -129,8 +138,8 @@ if interactive
 	code = input
 
 # compile the source code
-snow = new SnowCompiler(code)
-result = do snow.compile
+snow = new SnowCompiler(code, true, DEBUG)
+result = snow.compile false, HELPERS
 
 # if the user only wanted to compile the source
 if compileOnly is true

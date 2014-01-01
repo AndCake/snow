@@ -73,4 +73,16 @@ CODE
 })));
 null;');		
 	}
+
+	public function testBubbleCall() {
+		$this->compare(<<<CODE
+echo Mage..app().getStore().getName()
+echo new Miles().runTest 'simple', 2
+echo getObject().getClass()
+CODE
+		, 'echo(Mage::app()->getStore()->getName());
+echo(new Miles()->runTest(\'simple\', 2));
+echo(getObject()->getClass());
+null;');
+	}
 }

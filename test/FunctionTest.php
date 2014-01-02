@@ -85,4 +85,14 @@ echo(new Miles()->runTest(\'simple\', 2));
 echo(getObject()->getClass());
 null;');
 	}
+
+	public function testUnderscoreName() {
+		$this->compare(<<<CODE
+echo Mage..helper('adminhtml').__('Latest Products')
+echo _ "test"
+CODE
+			, 'echo(Mage::helper(\'adminhtml\')->__(\'Latest Products\'));
+echo(_("test"));
+null;');
+	}	
 }

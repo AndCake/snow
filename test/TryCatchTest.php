@@ -91,4 +91,18 @@ null;' : 'function test() {
 };
 null;'));
 	}
+
+	public function testThrow() {
+		$this->compare(<<<CODE
+throw new Exception()
+throw "test"
+throw new Exception "test"
+throw a
+CODE
+			, 'throw new Exception();
+throw new Exception("test");
+throw new Exception("test");
+throw new Exception($a);
+null;');
+	}
 }

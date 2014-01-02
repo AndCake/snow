@@ -71,7 +71,7 @@ fn compile(file)
 # if the user provided some more arguments
 if count(argv) > 1
 	# parse them
-	result = getopt "o:chwf", ["outfile:", "compile", "help", "watch", "functions"]
+	result = getopt "o:chwfd", ["outfile:", "compile", "help", "watch", "functions", "debug"]
 	args = argv->array_slice(result->count() + 1)
 	if args[0]?? and args[0]->file_exists()
 		code = file_get_contents args[0]
@@ -104,11 +104,12 @@ if count(argv) > 1
 Snow Script Compiler Version {ver}
 
 Syntax:
-	{argv[0]} [-o <output file>] [-chwf] [<input file>]
+	{argv[0]} [-o <output file>] [-chwfd] [<input file>]
 
 	-o <output file> - write the compiled result into the given file. If this parameter is missing, the compiled result will be written to stdout.
 	-c               - the input should only be compiled - not executed
 	-h               - shows this help
+	-d               - enable simple CLI debugger() function
 	-f               - do not include helper functions into the compiled output
 	-w               - watch mode: compile any changed snow file in given directory tree
 	<input file>     - the file that should be used as input. if this parameter is omitted, an interactive console will let you enter commands.

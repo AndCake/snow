@@ -18,7 +18,7 @@ error_reporting(E_ALL);
 
 class SnowCompiler {
 	# current compiler version
-	static $version = '0.0.7';
+	static $version = '0.1.1';
 
 	# the Snow language definition in a JSON-ENBF:
 	protected $ebnf = <<<EOL
@@ -142,7 +142,7 @@ class SnowCompiler {
 	"T_OPERATOR": "[ \\t]*(?:[\\\\-\\\\+\\\\*/&|]|xor)[ \\t]*",
 	"T_STRING_LITERAL_UQUOTE": "'([^']*)'",
 	"T_STRING_LITERAL_DQUOTE": "\"([^\"]*)\"",
-	"T_STRING_LITERAL_TQUOTE": ["\"\"\"", "([^\"]|\"[^\"]|\"\"[^\"])+", "\"\"\""],
+	"T_STRING_LITERAL_TQUOTE": ["\"\"\"\\\\s*", "([^\"]|\"[^\"]|\"\"[^\"])+", "\"\"\""],
 	"T_BOOL_OP": {"|": ["<T_BOOL_AND>", "<T_BOOL_OR>", "<T_BOOL_XOR>"]},
 	"T_BOOL_AND": "\\\\s+and\\\\s+",
 	"T_BOOL_OR": "\\\\s+or\\\\s+",
@@ -229,7 +229,7 @@ EOL;
 	"T_FNCSCALL": "\\\\1${R\\\\2/^@/$this->}${R\\\\2/^(\\\\w+)\\\\.\\\\./\\\\1::}${R\\\\2/^(\\\\w+)\\\\./$\\\\1->}${R\\\\2/(\\\\w+)\\\\./\\\\1->}(\\\\4)",
 	"T_FNDOCALL": "${R\\\\2/^@/$this->}${R\\\\2/^(\\\\w+)\\\\.\\\\./\\\\1::}${R\\\\2/^(\\\\w+)\\\\./$\\\\1->}${R\\\\2/(\\\\w+)\\\\./\\\\1->}();\\n",
 	"T_ASSIGNMENT": "\\\\1 \\\\2 \\\\3",
-	"T_RETURN": "return \\\\2;\\n",
+	"T_RETURN": "'.($debug ? 'breakpoint(get_defined_vars());' : '').'return \\\\2;\\n",
 	"T_STRING_LITERAL_UQUOTE": "\\\\1",
 	"T_STRING_LITERAL_DQUOTE": "${E\\\\1/\\\\{([^}]+)\\\\}/\" . (\\\\1) . \"}",
 	"T_STRING_LITERAL_TQUOTE": "<<<EOF\\n${E\\\\2/\\\\{([^}]+)\\\\}/\\\\1}\\nEOF\\n${I-1}",

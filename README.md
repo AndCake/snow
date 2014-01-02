@@ -597,3 +597,11 @@ Snow:
 		<strong>Fred</strong>
 		<strong>Dan</strong>
 	###
+
+#### The `debugger()` function
+
+This function stops the execution at the current point and renders the current program status (defined variables,
+the current line of code that is executed next, call stack and some controls). The controls can be used to
+resume execution, show the stack trace, do step-wise execution, and stop further execution of the program. 
+It is designed to work even without Xdebug and other debugging extensions and works from within a web interface 
+and the command line interface. 

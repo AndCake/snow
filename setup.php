@@ -187,37 +187,89 @@ if (!function_exists('template')) {
 }
 
 # the DEBUGGER functions
-#if (!function_exists("debugger")) {
-#	$break = false;
+if (!function_exists("debugger")) {
+	$break = false;
 
 	# 
 	# debugger() -> void
 	# 
-	# this function stops the current execution renders some instructions.
-	# It does not yet support the web interface (clicking a button/link to proceed/control execution)
+	# This function stops the execution at the current point and renders the current program status (defined variables,
+	# the current line of code that is executed next, call stack and some controls). The controls can be used to
+	# resume execution, show the stack trace, do step-wise execution, and stop further execution of the program. 
+	# It is designed to work even without Xdebug and other debugging extensions and works from within a web interface 
+	# and the command line interface. 
 	#
-#	function debugger() {
-#		global $break;
-#		$break = true;
-#	}
+	function debugger() {
+		global $break;
+		$break = true;
+	}
 
 	# this is a "private" function for the debugger, which renders a breakpoint
-#	function breakpoint($vars = null) {
-#		global $break;
-#		if (!$break || !defined("STDIN")) return;
-#		echo "\nDEBUGGER HALT. PRESS RETURN TO CONTINUE; PRESS S TO PRINT THE FULL STACK TRACE; PRESS SPACE TO CONTINUE EXECUTION.\n";
-#		var_dump($vars);
-#		$trace = debug_backtrace();
-#		echo $trace[1]["function"] . ":" . $trace[0]["line"]."\n";
-#		while (!in(($c=`read -s -n1 valu; echo \$valu`), Array("\n", ' ', 's')));
-#		if ($c == "\n") {
-#			return;
-#		} else if ($c == " ") {
-#			$break = false;
-#			return;
-#		} else if ($c == "s") {
-#			debug_print_backtrace();
-#			breakpoint($vars);
-#		}
-#	}	
-#}
+	function breakpoint($vars = null) {
+		global $break;
+		if (!$break) return;
+		set_time_limit(600);
+		if (PHP_SAPI !== 'cli') {
+			if (function_exists("apache_setenv")) @apache_setenv('no-gzip', 1);
+    		@ini_set('zlib.output_compression', 0);
+    		@ini_set('implicit_flush', 1);
+			$id = str_replace(".", "-", microtime(true));
+			$log = '__debug_action_current.log';
+			$run = '__debug_action_snow.php';
+			file_put_contents("./$run", "<?php\nfile_put_contents('./$log', json_encode(\$_GET), LOCK_EX);echo base64_decode('R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==');?".">", LOCK_EX);
+			echo "<div class='__snow_debug' id='__snow_debug$id'><button onclick='new Image().src=\"$run?x=n&l=\"+(+new Date());'>step</button><button onclick='document.getElementById(\"__snow_stack$id\").style.display=\"block\";'>call stack</button><button onclick='new Image().src=\"$run?x=c&l=\"+(+new Date());'>resume</button><button onclick='new Image().src=\"$run?x=t&l=\"+(+new Date());'>stop</button><br/><pre>";
+			ob_start();
+		} else {
+			echo chr(27) . "[2J" . chr(27) . "[;H";
+		}
+		$trace = debug_backtrace();
+		echo $trace[0]['file'].":".(empty($trace[1])?'{main}' : $trace[1]["function"]) . " - Line " . $trace[0]["line"]."\n";
+		if (file_exists($trace[0]['file'])) {
+			$file = array_slice(file($trace[0]['file']), max(0, $trace[0]['line'] - 1), 1);
+			echo preg_replace('/\\bbreakpoint\\(get_defined_vars\\(\\)\\);/m', '', implode("\n", $file));
+		}
+		print_r(@array_diff($vars, Array(Array())));
+        if (PHP_SAPI === 'cli') {
+        	$msg = "\nDEBUGGER HALT.\n[RETURN] - step next\n[P]+[RETURN] - print call stack\n[SPACE]+[RETURN] - resume\n"; 
+        	echo $msg;
+			while ($c=fgets(STDIN, 1024)) {
+				if ($c == "\n") {
+					return;
+				} else if ($c == " \n") {
+					$break = false;
+					return;
+				} else if ($c == "p\n") {
+					$e = new Exception();
+					echo implode("\n", array_slice(explode("\n", $e->getTraceAsString()), 1));
+		        	echo $msg;
+				}
+			}
+		} else {
+			echo ob_get_clean()."</pre><pre id='__snow_stack$id' style='display:none;'>";
+			$e = new Exception();
+			echo implode("\n", array_slice(explode("\n", $e->getTraceAsString()), 1));
+			echo "</pre></div>" . str_repeat(" ", 1024);
+			for ($i = 0; $i < ob_get_level(); $i++) { ob_end_flush(); }
+			flush();
+			ob_implicit_flush(1);
+			$die = false;
+			while (1) {
+				sleep(.25);
+				if (file_exists("$log")) {
+					$action = @json_decode(file_get_contents($log))->x;
+					@unlink($log);
+					if ($action === "c") $break = false;
+					if ($action === "t") { $die = true; }
+					if (in($action, "nct")) break;
+				}
+ 			}
+			@unlink($run);
+			echo "<style type='text/css'>div#__snow_debug$id { display: none; }</style>" . str_repeat(" ", 1024);
+			if ($die) die();
+			flush();
+			ob_implicit_flush(1);
+			sleep(.01);
+		}
+		set_time_limit(30);
+	}
+}

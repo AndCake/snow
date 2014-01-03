@@ -60,4 +60,37 @@ e is in test.
 <h1>Max</h1>
 ');
 	}
+
+	public function testTemplateObjects() {
+		$this->runAndCompare('
+class NixDa
+	public name = "Max"
+	public fn test <- 3
+	public fn users <- [\'Alfred\', \'Michel\', \'Inga\']
+
+nixDa = new NixDa()
+echo template \'<p>Hallo, {{name}} {{test}}</p>
+<ul>
+	{{#users}}
+		<li>{{.}}</li>
+	{{/users}}
+	{{^users}}<li>No users here!</li>{{/users}}
+	{{^testers}}
+		<li>No testers here.</li>
+	{{/testers}}
+</ul>\', nixDa', '<p>Hallo, Max 3</p>
+<ul>
+	
+		<li>Alfred</li>
+	
+		<li>Michel</li>
+	
+		<li>Inga</li>
+	
+	
+	
+		<li>No testers here.</li>
+	
+</ul>');
+	}
 }

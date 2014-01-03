@@ -1,6 +1,6 @@
 <?php
 /**
-	Copyright 2013 Robert Kunze
+	Copyright 2014 Robert Kunze
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ error_reporting(E_ALL);
 
 class SnowCompiler {
 	# current compiler version
-	static $version = '0.1.1';
+	static $version = '0.2.0';
 
 	# the Snow language definition in a JSON-ENBF:
 	protected $ebnf = <<<EOL

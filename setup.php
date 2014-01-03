@@ -114,75 +114,93 @@ if (!function_exists('template')) {
 		# parse a single variable
 		$parseVar = function($var, $root = '$data') use ($rootCore) { 
 			# if the variable is just a dot, then return the whole root variable
-			if (trim($var) == '.') return $root; 
+			if (trim($var) == '.') return Array($root, $root); 
 			# split the variable name by dot
 			$parts = explode('.', trim($var)); 
 			# if the first part is empty
-			if ($parts[0] == '') 
+			if ($parts[0] == '')  {
 				# we want the base root
-				$start = $rootCore; 
-			else 
+				$start = $obj = $rootCore; 
+			} else {
 				# else just use the current root and add the first part
 				$start = $root . '[\'' . $parts[0] . '\']'; 
+				$obj = $root . "->" . $parts[0];
+			}
 			# finally add all other parts
 			for ($i = 1; $i < count($parts); $i++) { 
-				$start .= '[\'' . $parts[$i]. '\']'; 
+				$start .= '[\'' . $parts[$i]. '\']';
+				$obj .= "->" . $parts[$i];
 			}
-			# returns an array expression (p.e. $data['test']['me'])
-			return $start; 
+			# returns an array expression and an object expression (p.e. $data['test']['me'], $data->test->me)
+			return Array($start, $obj);
 		};
 		# parse all variables
-		$parseVars = function($code, $root = '$data') use ($parseVar) { 
+		$parseVars = function($code, $root = '$data') use ($parseVar) {
 			preg_match_all('/\{\{(?!#\/\^)((?:[^}]|\}[^}])+)\}\}/m', $code, $matches); 
 			foreach ($matches[1] as $key => $match) { 
-				$var = $parseVar($match, $root); 
+				list($var, $obj) = $parseVar($match, $root);
+				$parts = explode("->", $obj);
+				$pre = implode("->", array_slice($parts, 0, -1));
+				$post = array_pop($parts);
 				# check if the current variable is a function; if so: call it, else just use the variable's value
-				$var = '(is_object('.$var.') && is_callable('.$var.') ? '.$var.'() : '.$var . ')'; 
+				if ($var === $obj) {
+					$var = '(is_object('.$var.') && is_callable('.$var.') ? '.$var.'() : '.$var.')';
+				} else {
+					$var = '(isset('.$obj.') ? ' . $obj . ' : (isset('.$pre.') && is_callable(Array('.$pre.', \''.$post.'\')) ? ' . $obj . '() : (is_object('.$var.') && is_callable('.$var.') ? '.$var.'() : ' . $var . ')))';
+				}
 				if (trim($match) != '.') { 
-					$var = 'function_exists(\''.$match.'\') ? '.$match.'() : ' . $var; 
+					$var = 'function_exists(\''.$match.'\') ? '.$match.'() : ' . $var;
 				}
 				# replace the expression in the resulting code
-				$code = str_replace($matches[0][$key], '\' . (' . $var . ') . \'', $code); 
-			} 
-			return $code; 
-		}; 
+				$code = str_replace($matches[0][$key], '\' . (' . $var . ') . \'', $code);
+			}
+			return $code;
+		};
 		# parse a template include
-		$parseTpl = function($code, $root = '$data') use ($depth, $file) { 
-			preg_match_all('/\{\{>((?:[^}]|\}[^\}])+)\}\}/m', $code, $matches); 
-			foreach ($matches[1] as $key => $match) { 
+		$parseTpl = function($code, $root = '$data') use ($depth, $file) {
+			preg_match_all('/\{\{>((?:[^}]|\}[^\}])+)\}\}/m', $code, $matches);
+			foreach ($matches[1] as $key => $match) {
 				# recursively parse templates includes via {{>blalbll}}
-				$code = str_replace($matches[0][$key], template(dirname((file_exists($file.'.tpl') ? $file : __FILE__))."/".trim($match), null, $root, false, $depth + 1), $code); 
+				$code = str_replace($matches[0][$key], template(dirname((file_exists($file.'.tpl') ? $file : __FILE__))."/".trim($match), null, $root, false, $depth + 1), $code);
 			}
 			# return the non-evaluated result
-			return $code; 
-		}; 
+			return $code;
+		};
 
 		# parse expressions
 		preg_match_all('/\{\{(#|\^)((?:[^}]|\}[^}])+)\}\}((?:[^{]|\{[^{]|\{\{[^#\^])*)\{\{\/\2\}\}/m', $code, $matches); 
 		foreach ($matches[1] as $key => $match) { 
 			# parse the respective expression's variable
-			$var = $parseVar($matches[2][$key]); 
+			list($var, $obj) = $parseVar($matches[2][$key]);
 			# if the current expression starts with a ^
-			if ($match == '^') { 
+			$parts = explode("->", $obj);
+			$pre = implode("->", array_slice($parts, 0, -1));
+			$post = array_pop($parts);
+			if ($obj === $var) {
+				$replacement = '\'; $__l'.$depth.' = (is_object('.$var.') && is_callable('.$var.') ? '.$var.'() : isset('.$var.') ? '.$var.' : \'\');';
+			} else {
+				$replacement = '\'; $__l'.$depth.' = (isset('.$obj.') ? '.$obj.' : (isset('.$pre.') && is_callable(Array('.$pre.', \''.$post.'\')) ? '.$obj.'() : (!is_object('.$pre.') && isset('.$var.') ? '.$var.' : \'\')));';
+			}
+			if ($match == '^') {
 				# then we check if the variable is empty
-				$code = str_replace($matches[0][$key], '\'; if (empty('.$var.')) { $__p .= \'' . $matches[3][$key] . '\'; } $__p .= \'', $code); 
-			} else if ($match == '#') { 
+				$code = str_replace($matches[0][$key], $replacement . 'if (empty($__l'.$depth.')) { $__p .= \'' . $matches[3][$key] . '\'; } unset($__l'.$depth.');$__p .= \'', $code);
+			} else if ($match == '#') {
 				# else we treat it like a loop
-				$replacement = '\'; if (!empty('.$var.')) { if (is_array('.$var.')) foreach (' . $var . ' as $counter => $entry'.$depth.') { $__p .= \''; 
-				$replacement .= $parseVars($parseTpl($matches[3][$key], '$entry'.$depth), '$entry'.$depth) . '\'; } else { $__p .= \'' . $matches[3][$key] . '\'; }} $__p .= \''; 
-				$code = str_replace($matches[0][$key], $replacement, $code); 
-			} 
-		} 
-		$code = $parseVars($parseTpl($code, $rootCore), $rootCore); 
+				$replacement .= 'if (!empty($__l'.$depth.')) { if (is_array($__l'.$depth.')) foreach ($__l'.$depth.' as $counter => $entry'.$depth.') { $__p .= \'';
+				$replacement .= $parseVars($parseTpl($matches[3][$key], '$entry'.$depth), '$entry'.$depth) . '\'; } else { $__p .= \'' . $matches[3][$key] . '\'; }} unset($__l'.$depth.'); $__p .= \'';
+				$code = str_replace($matches[0][$key], $replacement, $code);
+			}
+		}
+		$code = $parseVars($parseTpl($code, $rootCore), $rootCore);
 		# if the result should be evaluated
-		if ($eval) { 
+		if ($eval) {
 			# do the evaluation
-			$code = '$__p = \'' . $code . '\';'; 
+			$code = '$__p = \'' . $code . '\';';
 			eval($code);
 			# and return the resulting string
-			return $__p; 
+			return $__p;
 		}
-		return $code; 
+		return $code;
 	}
 }
 

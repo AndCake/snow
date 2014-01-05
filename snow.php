@@ -31,7 +31,7 @@ function watchChanges($dir, $callback) {global $LASTFAIL;
 
 	$dp  =  opendir($dir);
 	if (!$dp) {
-		throw(new Exception("Unable to open directory " . ($dir) . "."));
+		throw new Exception("Unable to open directory " . ($dir) . ".");
 }
 ;
 	// read all the files and directory names;
@@ -133,7 +133,7 @@ Syntax:
 	-o <output file> - write the compiled result into the given file. If this parameter is missing, the compiled result will be written to stdout.
 	-c               - the input should only be compiled - not executed
 	-h               - shows this help
-	-d               - enable simple CLI debugger() function
+	-d               - enable the debugger() function
 	-f               - do not include helper functions into the compiled output
 	-w               - watch mode: compile any changed snow file in given directory tree
 	<input file>     - the file that should be used as input. if this parameter is omitted, an interactive console will let you enter commands.

@@ -18,7 +18,7 @@ error_reporting(E_ALL);
 
 class SnowCompiler {
 	# current compiler version
-	static $version = '0.1.1';
+	static $version = '0.2.1';
 
 	# the Snow language definition in a JSON-ENBF:
 	protected $ebnf = <<<EOL

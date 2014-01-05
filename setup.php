@@ -199,6 +199,10 @@ if (!function_exists("debugger")) {
 	# It is designed to work even without Xdebug and other debugging extensions and works from within a web interface 
 	# and the command line interface. 
 	#
+	# Pre-condition for the debugger() function to work is, that the Snow code was compiled with the -d compiler
+	# switch (if using the `snow.php` script) or the third parameter of the SnowCompiler constructor was set to
+	# `true` (if using a custom script to compile/execute snow code). 
+	#
 	function debugger() {
 		global $break;
 		$break = true;

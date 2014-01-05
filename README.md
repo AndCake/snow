@@ -605,3 +605,7 @@ the current line of code that is executed next, call stack and some controls). T
 resume execution, show the stack trace, do step-wise execution, and stop further execution of the program. 
 It is designed to work even without Xdebug and other debugging extensions and works from within a web interface 
 and the command line interface. 
+
+Pre-condition for the debugger() function to work is, that the Snow code was compiled with the `-d` compiler
+switch (if using the `snow.php` script) or the third parameter of the SnowCompiler constructor was set to
+`true` (if using a custom script to compile/execute snow code). 

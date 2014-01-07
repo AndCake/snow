@@ -18,7 +18,7 @@ error_reporting(E_ALL);
 
 class SnowCompiler {
 	# current compiler version
-	static $version = '0.2.1';
+	static $version = '0.2.2';
 
 	# the Snow language definition in a JSON-ENBF:
 	protected $ebnf = <<<EOL
@@ -138,8 +138,8 @@ class SnowCompiler {
 	"T_COMPLEX_OPERAND": {"|": ["<T_FNCALL>", "<T_NUMBER_LITERAL>", "<T_IDENTIFIER>", "<T_COMPLEX_POPERAND>"]},
 	"T_COMPLEX_POPERAND": ["<T_RBRACKET_OPEN>", {"|": ["<T_COMPLEX_OPERATION>", "<T_COMPLEX_OPERAND>"]}, "<T_RBRACKET_CLOSE>"],
 	"T_COMPLEX_OPERATION_ADD": [{"|": ["<T_OPERATOR>", "<T_MODULO>"]}, {"|": ["<T_COMPLEX_OPERATION>", "<T_COMPLEX_OPERAND>"]}],
-	"T_COMPLEX_STRING_OPERATION": [{"|": ["<T_FNCALL>", "<T_STRING_LITERAL>", "<T_IDENTIFIER>"]}, {"+": "<T_COMPLEX_STRING_OPERATION_ADD>"}],
-	"T_COMPLEX_STRING_OPERATION_ADD": ["<T_STRING_CONCAT>", {"|": ["<T_FNCALL>", "<T_STRING_LITERAL>", "<T_IDENTIFIER>"]}],
+	"T_COMPLEX_STRING_OPERATION": [{"|": ["<T_FNCALL>", "<T_STRING_LITERAL>", "<T_CONST>", "<T_IDENTIFIER>"]}, {"+": "<T_COMPLEX_STRING_OPERATION_ADD>"}],
+	"T_COMPLEX_STRING_OPERATION_ADD": ["<T_STRING_CONCAT>", {"|": ["<T_FNCALL>", "<T_STRING_LITERAL>", "<T_CONST>", "<T_IDENTIFIER>"]}],
 	"T_MODULO": "\\\\s+mod\\\\s+",
 	"T_STRING_CONCAT": "\\\\s*[\\\\+%&]\\\\s*",
 	"T_OPERATOR": "[ \\t]*(?:[\\\\-\\\\+\\\\*/&|]|xor)[ \\t]*",

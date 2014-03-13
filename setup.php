@@ -231,17 +231,22 @@ if (!function_exists("debugger")) {
 		global $break;
 		if (!$break) return;
 		set_time_limit(600);
+		# if we're not on the command line
 		if (PHP_SAPI !== 'cli') {
+			# we probably are on a web server => prepare the environment to support our implicit flush
 			if (function_exists("apache_setenv")) @apache_setenv('no-gzip', 1);
     		@ini_set('zlib.output_compression', 0);
     		@ini_set('implicit_flush', 1);
 			$id = str_replace(".", "-", microtime(true));
+			# have the background php file & log file be created
 			$log = '__debug_action_current.log';
 			$run = '__debug_action_snow.php';
 			file_put_contents("./$run", "<?php\nfile_put_contents('./$log', json_encode(\$_GET), LOCK_EX);echo base64_decode('R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==');?".">", LOCK_EX);
+			# and write out the controls for debugging
 			echo "<div class='__snow_debug' id='__snow_debug$id'><button onclick='new Image().src=\"$run?x=n&l=\"+(+new Date());'>step</button><button onclick='document.getElementById(\"__snow_stack$id\").style.display=\"block\";'>call stack</button><button onclick='new Image().src=\"$run?x=c&l=\"+(+new Date());'>resume</button><button onclick='new Image().src=\"$run?x=t&l=\"+(+new Date());'>stop</button><br/><pre>";
 			ob_start();
 		} else {
+			# we're on the command line => clear the screen so that we see what happens
 			echo chr(27) . "[2J" . chr(27) . "[;H";
 		}
 		$trace = debug_backtrace();
@@ -252,42 +257,59 @@ if (!function_exists("debugger")) {
 		}
 		print_r(@array_diff($vars, Array(Array())));
         if (PHP_SAPI === 'cli') {
+        	# on the command line, we show the controls after rendering all environment data
         	$msg = "\nDEBUGGER HALT.\n[RETURN] - step next\n[P]+[RETURN] - print call stack\n[SPACE]+[RETURN] - resume\n"; 
         	echo $msg;
+        	# read in the user input in order for him to control the behavior
 			while ($c=fgets(STDIN, 1024)) {
 				if ($c == "\n") {
+					# just return, then next step
 					return;
 				} else if ($c == " \n") {
+					# space + return: resume execution
 					$break = false;
 					return;
 				} else if ($c == "p\n") {
+					# p + return: print call stack but don't do the next step yet
 					$e = new Exception();
 					echo implode("\n", array_slice(explode("\n", $e->getTraceAsString()), 1));
 		        	echo $msg;
 				}
 			}
 		} else {
+			# we're on a web server, so we just print out the stack trace directly
 			echo ob_get_clean()."</pre><pre id='__snow_stack$id' style='display:none;'>";
 			$e = new Exception();
 			echo implode("\n", array_slice(explode("\n", $e->getTraceAsString()), 1));
+			# clean up the HTML structure printed out
 			echo "</pre></div>" . str_repeat(" ", 1024);
+			# flush all prepared output to the client
 			for ($i = 0; $i < ob_get_level(); $i++) { ob_end_flush(); }
 			flush();
 			ob_implicit_flush(1);
 			$die = false;
+			# when wait
 			while (1) {
 				sleep(.25);
+				# until we find something useful in the action log file
 				if (file_exists("$log")) {
 					$action = @json_decode(file_get_contents($log))->x;
 					@unlink($log);
+					# if it's a "c", then we should resume execution
 					if ($action === "c") $break = false;
+					# for a "t", we just terminate any further execution
 					if ($action === "t") { $die = true; }
+					# for any "n", "c" or "t", we stop waiting and proceed 
 					if (in($action, "nct")) break;
 				}
  			}
+ 			# ok we need to clean up the debug script
 			@unlink($run);
+			# hide the last output
 			echo "<style type='text/css'>div#__snow_debug$id { display: none; }</style>" . str_repeat(" ", 1024);
+			# if necessary, terminate further execution
 			if ($die) die();
+			# else just flush it out to the client and proceed
 			flush();
 			ob_implicit_flush(1);
 			sleep(.01);
